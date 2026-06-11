@@ -256,7 +256,7 @@ export default function ZoneDetailScreen() {
               <CardBox>
                 <Text style={{ fontWeight: '800', color: '#0F172A', marginBottom: 10 }}>Tu reseña</Text>
                 {/* Star picker */}
-                <View className="flex-row gap-1 mb-10">
+                <View className="flex-row gap-1 mb-4">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <TouchableOpacity key={star} onPress={() => setNewRating(star)}>
                       <MaterialIcons

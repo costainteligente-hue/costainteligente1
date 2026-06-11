@@ -44,7 +44,7 @@ export default function RootLayout() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [setSession, setLoading]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

@@ -1,4 +1,4 @@
-import * as ImageManipulator from 'expo-image-manipulator';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 const MAX_DIMENSION = 1280;
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -17,7 +17,7 @@ export interface CompressResult {
  * Throws if the resulting size estimate exceeds 5 MB.
  */
 export async function compressImage(uri: string): Promise<CompressResult> {
-  const result = await ImageManipulator.manipulateAsync(
+  const result = await manipulateAsync(
     uri,
     [
       {
@@ -28,7 +28,7 @@ export async function compressImage(uri: string): Promise<CompressResult> {
     ],
     {
       compress: COMPRESS_QUALITY,
-      format: ImageManipulator.SaveFormat.JPEG,
+      format: SaveFormat.JPEG,
     },
   );
 
