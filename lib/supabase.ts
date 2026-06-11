@@ -1,31 +1,43 @@
 import 'react-native-url-polyfill/auto';
-import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 
-// expo-secure-store only works on native (iOS/Android), not on web.
-// On web we fall back to localStorage so the build doesn't crash.
+// Safe localStorage access — works in browser, SSR (Node), and native.
+// During Expo's static rendering, window/localStorage don't exist.
 function makeStorageAdapter() {
-  if (Platform.OS === 'web') {
+  const hasLocalStorage =
+    typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+
+  if (hasLocalStorage) {
     return {
-      getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
+      getItem: (key: string) => Promise.resolve(window.localStorage.getItem(key)),
       setItem: (key: string, value: string) => {
-        localStorage.setItem(key, value);
+        window.localStorage.setItem(key, value);
         return Promise.resolve();
       },
       removeItem: (key: string) => {
-        localStorage.removeItem(key);
+        window.localStorage.removeItem(key);
         return Promise.resolve();
       },
     };
   }
 
-  // Lazy-require so bundler tree-shakes it on web
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const SecureStore = require('expo-secure-store');
+  // Native (iOS/Android) — lazy require expo-secure-store
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const SecureStore = require('expo-secure-store');
+    return {
+      getItem: (key: string) => SecureStore.getItemAsync(key),
+      setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+      removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+    };
+  }
+
+  // SSR / Node.js — in-memory fallback (session won't persist, which is fine for SSR)
+  const memStore: Record<string, string> = {};
   return {
-    getItem: (key: string) => SecureStore.getItemAsync(key),
-    setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
-    removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+    getItem: (key: string) => Promise.resolve(memStore[key] ?? null),
+    setItem: (key: string, value: string) => { memStore[key] = value; return Promise.resolve(); },
+    removeItem: (key: string) => { delete memStore[key]; return Promise.resolve(); },
   };
 }
 

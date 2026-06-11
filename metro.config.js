@@ -3,14 +3,15 @@ const { withNativeWind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 
-// Stub native-only modules on web
+// Stub native-only and optional modules on web
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === 'web') {
-    const nativeOnlyModules = [
+    const stubModules = [
       'react-native-maps',
       'react-native-webview',
+      '@opentelemetry/api',
     ];
-    if (nativeOnlyModules.includes(moduleName)) {
+    if (stubModules.includes(moduleName)) {
       return { type: 'empty' };
     }
   }
