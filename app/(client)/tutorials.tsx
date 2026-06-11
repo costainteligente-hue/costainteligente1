@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import {
   ScrollView, View, Text, TouchableOpacity, ActivityIndicator,
-  Modal, StyleSheet,
+  Modal, StyleSheet, Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { WebView } from 'react-native-webview';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { COLORS } from '@/lib/constants';
@@ -91,7 +90,7 @@ const LEVEL_COLORS: Record<string, string> = {
   avanzado: COLORS.danger,
 };
 
-// YouTube player modal — no autoplay on mount
+// YouTube player modal — uses WebView on native, iframe on web
 function YouTubeModal({
   videoId,
   title,
@@ -101,35 +100,59 @@ function YouTubeModal({
   title: string;
   onClose: () => void;
 }) {
-  // HTML with mediaPlaybackRequiresUserAction to prevent autoplay
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { background: #000; }
-          .wrapper { position: relative; width: 100%; padding-top: 56.25%; }
-          iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        </style>
-      </head>
-      <body>
-        <div class="wrapper">
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
+
+  // Web: render inline iframe inside a Modal-like overlay
+  if (Platform.OS === 'web') {
+    return (
+      <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              backgroundColor: '#0F172A',
+              gap: 12,
+            }}
+          >
+            <TouchableOpacity onPress={onClose}>
+              <MaterialIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={{ color: '#fff', fontWeight: '700', flex: 1, fontSize: 14 }} numberOfLines={1}>
+              {title}
+            </Text>
+          </View>
+          {/* @ts-ignore — iframe is valid on web */}
           <iframe
-            src="https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1"
-            frameborder="0"
-            allowfullscreen
-          ></iframe>
-        </div>
-      </body>
-    </html>
-  `;
+            src={embedUrl}
+            style={{ flex: 1, width: '100%', border: 'none', backgroundColor: '#000' }}
+            allowFullScreen
+            title={title}
+          />
+        </SafeAreaView>
+      </Modal>
+    );
+  }
+
+  // Native: use WebView via dynamic require so it's not bundled on web
+  const WebView = require('react-native-webview').WebView;
+  const html = `
+    <!DOCTYPE html><html>
+      <head><meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000}
+        .w{position:relative;width:100%;padding-top:56.25%}
+        iframe{position:absolute;top:0;left:0;width:100%;height:100%}</style>
+      </head>
+      <body><div class="w">
+        <iframe src="${embedUrl}" frameborder="0" allowfullscreen></iframe>
+      </div></body>
+    </html>`;
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
-        {/* Header */}
         <View
           style={{
             flexDirection: 'row',
@@ -147,8 +170,6 @@ function YouTubeModal({
             {title}
           </Text>
         </View>
-
-        {/* WebView player */}
         <WebView
           source={{ html }}
           style={{ flex: 1, backgroundColor: '#000' }}

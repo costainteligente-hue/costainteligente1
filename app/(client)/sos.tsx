@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Linking, ActivityIndicator, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Location from 'expo-location';
 import { COLORS, EMERGENCY_CONTACTS } from '@/lib/constants';
 
 type GPSState = 'idle' | 'requesting' | 'granted' | 'timeout' | 'denied';
@@ -18,14 +17,31 @@ export default function SOSScreen() {
   const requestGPS = async () => {
     setGpsState('requesting');
 
-    const { status } = await Location.requestForegroundPermissionsAsync();
-
-    if (status === 'denied') {
-      setGpsState('denied');
+    // On web, use the browser Geolocation API directly
+    if (Platform.OS === 'web') {
+      if (!navigator.geolocation) {
+        setGpsState('denied');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+          setGpsState('granted');
+        },
+        () => setGpsState('denied'),
+        { timeout: 10000 },
+      );
       return;
     }
 
+    // Native: use expo-location via dynamic import
     try {
+      const Location = await import('expo-location');
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'denied') {
+        setGpsState('denied');
+        return;
+      }
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
         timeInterval: 10000,
@@ -45,6 +61,15 @@ export default function SOSScreen() {
     if (!coords) return;
     const url = `https://maps.google.com/?q=${coords.lat},${coords.lon}`;
     Linking.openURL(url);
+  };
+
+  const openSettings = () => {
+    if (Platform.OS === 'web') {
+      // Browsers don't allow opening settings — just show info
+      setGpsState('timeout');
+      return;
+    }
+    Linking.openSettings();
   };
 
   return (
@@ -168,7 +193,7 @@ export default function SOSScreen() {
                 Permiso de ubicación denegado. Activa los permisos de ubicación en la configuración de tu dispositivo para compartir tu posición.
               </Text>
               <TouchableOpacity
-                onPress={() => Linking.openSettings()}
+                onPress={openSettings}
                 style={{ marginTop: 8 }}
               >
                 <Text style={{ color: COLORS.ocean, fontWeight: '800' }}>Abrir configuración</Text>
