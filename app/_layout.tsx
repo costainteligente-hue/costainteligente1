@@ -21,34 +21,43 @@ export default function RootLayout() {
   const { setSession, setLoading } = useAuthStore();
 
   useEffect(() => {
-    // Listen for auth state changes
+    // Check existing session on mount first
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        const role = (profile?.role as UserRole)
+          ?? (session.user.user_metadata?.role as UserRole)
+          ?? 'client';
+        setSession(session, role);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Listen for auth state changes (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          setSession(null, null);
+          return;
+        }
         if (session) {
-          // Get user role from profiles table
-          // Use the access token to ensure RLS context is set
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', session.user.id)
             .single();
-
-          // Fallback: read role from user_metadata if profile query fails
           const role = (profile?.role as UserRole)
             ?? (session.user.user_metadata?.role as UserRole)
             ?? 'client';
-
           setSession(session, role);
-        } else {
-          setSession(null, null);
         }
       },
     );
-
-    // Check existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) setLoading(false);
-    });
 
     return () => subscription.unsubscribe();
   }, [setSession, setLoading]);
