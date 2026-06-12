@@ -41,11 +41,11 @@ export default function RootLayout() {
     // Listen for auth state changes (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_OUT') {
+        if (event === 'SIGNED_OUT' || !session) {
           setSession(null, null);
           return;
         }
-        if (session) {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')

@@ -80,8 +80,8 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    // clear() sets role=null, isLoading=false which triggers index.tsx → /auth/login
     clear();
-    router.replace('/auth/login');
   };
 
   return (
