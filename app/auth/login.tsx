@@ -54,7 +54,7 @@ export default function LoginScreen() {
         setBlockedUntil(until);
         setError('Demasiados intentos fallidos. Intenta de nuevo en 15 minutos.');
       } else {
-        setError('Correo o contraseña incorrectos.');
+        setError(`Error: ${authError.message}`);
       }
     }
     // On success, _layout.tsx listener handles the redirect
