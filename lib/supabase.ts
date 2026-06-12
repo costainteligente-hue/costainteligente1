@@ -48,7 +48,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: makeStorageAdapter() as any,
     autoRefreshToken: true,
-    persistSession: false,
-    detectSessionInUrl: false,
+    persistSession: true,
+    detectSessionInUrl: true,
   },
 });

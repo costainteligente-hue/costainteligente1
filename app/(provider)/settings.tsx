@@ -6,6 +6,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useProviderStore } from '@/stores/providerStore';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
@@ -101,6 +103,7 @@ function SettingsGroup({ title, children }: { title: string; children: React.Rea
 export default function SettingsScreen() {
   const router = useRouter();
   const { confirmBeforeDelete, setConfirmBeforeDelete } = useProviderStore();
+  const { clear } = useAuthStore();
 
   const [notifications, setNotifications] = useState(true);
   const [reservationAlerts, setReservationAlerts] = useState(true);
@@ -110,11 +113,9 @@ export default function SettingsScreen() {
   const [accentColor, setAccentColor] = useState(COLORS.ocean);
   const [darkMode, setDarkMode] = useState(false);
 
-  const handleLogout = () => {
-    Alert.alert('Cerrar sesión', '¿Deseas cerrar tu sesión?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cerrar sesión', style: 'destructive', onPress: () => {} },
-    ]);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    clear();
   };
 
   return (

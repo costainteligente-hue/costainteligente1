@@ -49,7 +49,8 @@ export default function RegisterClientScreen() {
     if (error) {
       setErrors({ email: 'No se pudo completar el registro. Intenta de nuevo.' });
     } else {
-      router.replace('/auth/email-verification' as any);
+      // Go directly to client dashboard — email confirmation disabled
+      router.replace('/(client)' as any);
     }
   };
 

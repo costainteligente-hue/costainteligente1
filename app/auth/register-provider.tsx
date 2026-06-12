@@ -112,7 +112,7 @@ export default function RegisterProviderScreen() {
       });
 
       if (signUpError) {
-        setErrors({ email: 'No se pudo crear la cuenta. Intenta de nuevo.' });
+        setErrors({ email: `Error: ${signUpError.message}` });
         setLoading(false);
         return;
       }

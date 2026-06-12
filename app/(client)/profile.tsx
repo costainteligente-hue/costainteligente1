@@ -19,19 +19,9 @@ export default function ClientProfileScreen() {
   const name = user?.user_metadata?.full_name ?? 'Usuario';
   const email = user?.email ?? '—';
 
-  const handleLogout = () => {
-    Alert.alert('Cerrar sesión', '¿Deseas cerrar tu sesión?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cerrar sesión',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
-          clear();
-          router.replace('/auth/login');
-        },
-      },
-    ]);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    clear();
   };
 
   return (
