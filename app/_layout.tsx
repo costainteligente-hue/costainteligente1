@@ -26,12 +26,19 @@ export default function RootLayout() {
       async (event, session) => {
         if (session) {
           // Get user role from profiles table
+          // Use the access token to ensure RLS context is set
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', session.user.id)
             .single();
-          setSession(session, (profile?.role as UserRole) ?? 'client');
+
+          // Fallback: read role from user_metadata if profile query fails
+          const role = (profile?.role as UserRole)
+            ?? (session.user.user_metadata?.role as UserRole)
+            ?? 'client';
+
+          setSession(session, role);
         } else {
           setSession(null, null);
         }
