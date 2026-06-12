@@ -1,13 +1,14 @@
 import React from 'react';
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
-import { StatusPill } from '@/components/ui/StatusPill';
 import { InfoBox } from '@/components/ui/InfoBox';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
 
 // ─── Metric card ──────────────────────────────────────────────────────────────
 function MetricCard({
@@ -69,16 +70,41 @@ function NavCard({
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { clear } = useAuthStore();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    clear();
+    router.replace('/auth/login');
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }} edges={['top']}>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-        <HeaderCard
-          title="Panel de administración"
-          subtitle="Métricas en tiempo real y gestión de la plataforma."
-          icon="admin-panel-settings"
-          color={COLORS.ocean}
-        />
+        {/* Header with logout */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <View style={{ flex: 1 }}>
+            <HeaderCard
+              title="Panel de administración"
+              subtitle="Métricas en tiempo real y gestión de la plataforma."
+              icon="admin-panel-settings"
+              color={COLORS.ocean}
+            />
+          </View>
+        </View>
+
+        {/* Logout button */}
+        <TouchableOpacity
+          onPress={handleLogout}
+          style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+            gap: 8, padding: 12, borderRadius: 14, borderWidth: 1,
+            borderColor: COLORS.danger, marginBottom: 16,
+          }}
+        >
+          <MaterialIcons name="logout" size={18} color={COLORS.danger} />
+          <Text style={{ color: COLORS.danger, fontWeight: '800' }}>Cerrar sesión</Text>
+        </TouchableOpacity>
 
         {/* Metrics row 1 */}
         <View className="flex-row gap-3 mb-3">

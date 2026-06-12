@@ -10,9 +10,12 @@ interface Props {
 export function CardBox({ children, style, className }: Props) {
   return (
     <View
-      className={`bg-white dark:bg-gray-900 rounded-2xl border border-line dark:border-white/10 mb-3 p-4 ${className ?? ''}`}
+      className={`rounded-2xl mb-3 p-4 ${className ?? ''}`}
       style={[
         {
+          backgroundColor: '#ffffff',
+          borderWidth: 1,
+          borderColor: '#E2E8F0',
           shadowColor: '#0F172A',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.06,
