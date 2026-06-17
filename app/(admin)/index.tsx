@@ -7,22 +7,33 @@ import { useQuery } from '@tanstack/react-query';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
-import { supabase } from '@/lib/supabase';
+import { eq } from 'drizzle-orm';
+import { getDb } from '@/lib/db/client';
+import { profiles, providers } from '@/lib/db/schema';
+import { signOut } from '@/lib/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
 
 function useAdminStats() {
   return useQuery({
     queryKey: ['admin_stats'],
     queryFn: async () => {
-      const [clients, providers, pendingProviders] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'client'),
-        supabase.from('providers').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
-        supabase.from('providers').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-      ]);
+      const db = getDb();
+      const clientRows = await db
+        .select({ id: profiles.id })
+        .from(profiles)
+        .where(eq(profiles.role, 'client'));
+      const approvedRows = await db
+        .select({ id: providers.id })
+        .from(providers)
+        .where(eq(providers.status, 'approved'));
+      const pendingRows = await db
+        .select({ id: providers.id })
+        .from(providers)
+        .where(eq(providers.status, 'pending'));
       return {
-        clients: clients.count ?? 0,
-        providers: providers.count ?? 0,
-        pending: pendingProviders.count ?? 0,
+        clients: clientRows.length,
+        providers: approvedRows.length,
+        pending: pendingRows.length,
       };
     },
   });
@@ -79,7 +90,7 @@ export default function AdminDashboard() {
   const { data: stats, isLoading } = useAdminStats();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     // clear() sets role=null, isLoading=false which triggers index.tsx → /auth/login
     clear();
   };

@@ -6,7 +6,9 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { eq } from 'drizzle-orm';
+import { getDb } from '@/lib/db/client';
+import { tutorials as tutorialsTable } from '@/lib/db/schema';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
@@ -34,7 +36,7 @@ function getYouTubeId(url: string): string | null {
   return null;
 }
 
-// Seed data while Supabase has no records
+// Seed data para cuando la base de datos está vacía
 const SEED_TUTORIALS: Tutorial[] = [
   {
     id: 't1',
@@ -70,15 +72,14 @@ function useTutorials() {
   return useQuery({
     queryKey: ['tutorials'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tutorials')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data as Tutorial[]) ?? [];
+      const db = getDb();
+      const rows = await db
+        .select()
+        .from(tutorialsTable)
+        .where(eq(tutorialsTable.isActive, true));
+      return rows as Tutorial[];
     },
-    staleTime: 1000 * 60 * 60 * 24, // 24 h
+    staleTime: 1000 * 60 * 60 * 24,
     gcTime: 1000 * 60 * 60 * 48,
     retry: 1,
   });

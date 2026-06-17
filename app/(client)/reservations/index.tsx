@@ -6,7 +6,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { eq } from 'drizzle-orm';
+import { getDb } from '@/lib/db/client';
+import { reservations } from '@/lib/db/schema';
 import { useAuthStore } from '@/stores/authStore';
 import { useClientReservations } from '@/hooks/useReservations';
 import { COLORS } from '@/lib/constants';
@@ -31,11 +33,11 @@ function useCancelReservation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (reservationId: string) => {
-      const { error } = await supabase
-        .from('reservations')
-        .update({ status: 'cancelled' })
-        .eq('id', reservationId);
-      if (error) throw error;
+      const db = getDb();
+      await db
+        .update(reservations)
+        .set({ status: 'cancelled', updatedAt: new Date() })
+        .where(eq(reservations.id, reservationId));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });

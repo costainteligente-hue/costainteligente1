@@ -1,3 +1,7 @@
+/**
+ * RegisterClientScreen — Costa Inteligente
+ */
+
 import React, { useState } from 'react';
 import {
   ScrollView, View, Text, TextInput, TouchableOpacity,
@@ -6,13 +10,15 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { signUp } from '@/lib/services/auth.service';
+import { useAuthStore } from '@/stores/authStore';
 import { COLORS } from '@/lib/constants';
 import { InfoBox } from '@/components/ui/InfoBox';
 import { CardBox } from '@/components/ui/CardBox';
 
 export default function RegisterClientScreen() {
   const router = useRouter();
+  const { setSession } = useAuthStore();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,19 +45,21 @@ export default function RegisterClientScreen() {
     setErrors({});
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { session, error } = await signUp({
       email: email.trim(),
       password,
-      options: { data: { full_name: fullName.trim(), role: 'client' } },
+      fullName: fullName.trim(),
+      role: 'client',
     });
 
     setLoading(false);
-    if (error) {
-      setErrors({ email: 'No se pudo completar el registro. Intenta de nuevo.' });
-    } else {
-      // Go directly to client dashboard — email confirmation disabled
-      router.replace('/(client)' as any);
+    if (error || !session) {
+      setErrors({ email: error ?? 'No se pudo completar el registro. Intenta de nuevo.' });
+      return;
     }
+
+    setSession(session, 'client');
+    router.replace('/(client)' as any);
   };
 
   if (showPrivacy) {
@@ -71,7 +79,7 @@ export default function RegisterClientScreen() {
             <Text style={{ fontWeight: '800' }}>Finalidades:</Text> prestación del servicio, reservaciones, comunidad y notificaciones.
           </Text>
           <Text style={{ color: '#0F172A', lineHeight: 22, marginBottom: 12 }}>
-            <Text style={{ fontWeight: '800' }}>Transferencias:</Text> Supabase, Mercado Pago y Expo (notificaciones push).
+            <Text style={{ fontWeight: '800' }}>Transferencias:</Text> Mercado Pago y Expo (notificaciones push).
           </Text>
           <Text style={{ color: '#0F172A', lineHeight: 22, marginBottom: 20 }}>
             <Text style={{ fontWeight: '800' }}>Derechos ARCO:</Text> privacidad@costainteligente.mx. Retención: mientras la cuenta esté activa.

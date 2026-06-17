@@ -1,18 +1,14 @@
+/**
+ * useProviderServices — Costa Inteligente
+ */
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { providerServicesRepository } from '@/lib/repositories/provider-services.repository';
 
 export function useProviderServices(providerId?: string) {
   return useQuery({
     queryKey: ['provider_services', providerId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('provider_services')
-        .select('*')
-        .eq('provider_id', providerId!)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => providerServicesRepository.findByProviderId(providerId!),
     enabled: !!providerId,
     staleTime: 1000 * 60 * 5,
   });
@@ -21,13 +17,8 @@ export function useProviderServices(providerId?: string) {
 export function useToggleServiceStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: 'active' | 'inactive' }) => {
-      const { error } = await supabase
-        .from('provider_services')
-        .update({ status })
-        .eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, status }: { id: string; status: 'active' | 'inactive' }) =>
+      providerServicesRepository.updateStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['provider_services'] });
     },

@@ -6,7 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { publicServicesRepository } from '@/lib/repositories/public-services.repository';
 import { COLORS, SERVICE_DEFS } from '@/lib/constants';
 import { applyDiscount } from '@/lib/utils/formatCurrency';
 import { CardBox } from '@/components/ui/CardBox';
@@ -39,19 +39,7 @@ interface ServiceDetail {
 function useServiceDetail(id: string) {
   return useQuery({
     queryKey: ['service_detail_view', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('provider_services')
-        .select(`
-          *,
-          providers ( id, business_name, status ),
-          promotions ( discount_percent, status )
-        `)
-        .eq('id', id)
-        .single();
-      if (error) throw error;
-      return data as ServiceDetail;
-    },
+    queryFn: () => publicServicesRepository.findById(id),
     enabled: !!id,
   });
 }

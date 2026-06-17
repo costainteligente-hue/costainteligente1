@@ -6,7 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { publicServicesRepository } from '@/lib/repositories/public-services.repository';
 import { COLORS, SERVICE_DEFS } from '@/lib/constants';
 import { applyDiscount } from '@/lib/utils/formatCurrency';
 import { CardBox } from '@/components/ui/CardBox';
@@ -39,25 +39,7 @@ interface ServiceWithPromotion {
 function useActiveServices(search: string) {
   return useQuery({
     queryKey: ['active_services', search],
-    queryFn: async () => {
-      let query = supabase
-        .from('provider_services')
-        .select(`
-          *,
-          providers!inner ( id, business_name, status ),
-          promotions ( discount_percent, status )
-        `)
-        .eq('status', 'active')
-        .eq('providers.status', 'approved');
-
-      if (search.trim()) {
-        query = query.ilike('name', `%${search.trim()}%`);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data as ServiceWithPromotion[]) ?? [];
-    },
+    queryFn: () => publicServicesRepository.findActive(search),
     staleTime: 1000 * 60 * 5,
   });
 }

@@ -3,7 +3,7 @@ import { ScrollView, View, Text, TouchableOpacity, Switch, Alert } from 'react-n
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { signOut } from '@/lib/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
@@ -16,11 +16,11 @@ export default function ClientProfileScreen() {
   const [vedaAlerts, setVedaAlerts] = useState(true);
   const [generalAlerts, setGeneralAlerts] = useState(true);
 
-  const name = user?.user_metadata?.full_name ?? 'Usuario';
+  const name = user?.fullName ?? 'Usuario';
   const email = user?.email ?? '—';
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     clear();
   };
 

@@ -1,3 +1,7 @@
+/**
+ * LoginScreen — Costa Inteligente
+ */
+
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -7,11 +11,13 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '@/lib/supabase';
+import { signIn } from '@/lib/services/auth.service';
+import { useAuthStore } from '@/stores/authStore';
 import { COLORS } from '@/lib/constants';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { setSession } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -41,12 +47,13 @@ export default function LoginScreen() {
 
     setLoading(true);
     setError('');
-    const { error: authError } = await supabase.auth.signInWithPassword({
+
+    const { session, error: authError } = await signIn({
       email: email.trim(),
       password,
     });
 
-    if (authError) {
+    if (authError || !session) {
       const attempts = failedAttempts + 1;
       setFailedAttempts(attempts);
       if (attempts >= 5) {
@@ -54,11 +61,23 @@ export default function LoginScreen() {
         setBlockedUntil(until);
         setError('Demasiados intentos fallidos. Intenta de nuevo en 15 minutos.');
       } else {
-        setError(`Error: ${authError.message}`);
+        setError(authError ?? 'Error al iniciar sesión.');
       }
+      setLoading(false);
+      return;
     }
-    // On success, _layout.tsx listener handles the redirect
+
+    // Update auth store and redirect based on role
+    setSession(session, session.user.role);
     setLoading(false);
+
+    if (session.user.role === 'admin') {
+      router.replace('/(admin)' as any);
+    } else if (session.user.role === 'provider') {
+      router.replace('/(provider)' as any);
+    } else {
+      router.replace('/(client)' as any);
+    }
   };
 
   return (
@@ -81,7 +100,6 @@ export default function LoginScreen() {
             </Text>
           </LinearGradient>
 
-          {/* Form */}
           <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 20 }}>
             Iniciar sesión
           </Text>
@@ -164,7 +182,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Submit */}
           <TouchableOpacity
             onPress={handleLogin}
             disabled={loading || !!isBlocked}
@@ -189,14 +206,13 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Divider */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
             <Text style={{ color: '#94A3B8', fontWeight: '700' }}>o</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
           </View>
 
-          {/* Google OAuth placeholder */}
+          {/* Google OAuth — placeholder (requiere backend propio) */}
           <TouchableOpacity
             style={{
               borderRadius: 14,
@@ -215,7 +231,6 @@ export default function LoginScreen() {
             <Text style={{ fontWeight: '800', color: '#0F172A' }}>Continuar con Google</Text>
           </TouchableOpacity>
 
-          {/* Register links */}
           <View className="items-center gap-3">
             <TouchableOpacity onPress={() => router.push('/auth/register-client')}>
               <Text style={{ color: COLORS.ocean, fontWeight: '700' }}>

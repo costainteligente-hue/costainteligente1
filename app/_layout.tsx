@@ -1,66 +1,52 @@
-import { useEffect } from 'react';
+/**
+ * Root Layout — Costa Inteligente
+ * Inicializa PostgreSQL, verifica la sesión persistida y configura la navegación.
+ */
+
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { View, ActivityIndicator } from 'react-native';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
-import { supabase } from '@/lib/supabase';
+import { initDatabase } from '@/lib/db/client';
+import { getSession } from '@/lib/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
-import { UserRole } from '@/types';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      retry: 2,
-    },
-  },
-});
+import { queryClient } from '@/lib/queryClient';
+import { COLORS } from '@/lib/constants';
 
 export default function RootLayout() {
   const { setSession, setLoading } = useAuthStore();
+  const [dbReady, setDbReady] = useState(false);
 
   useEffect(() => {
-    // Check existing session on mount first
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-        const role = (profile?.role as UserRole)
-          ?? (session.user.user_metadata?.role as UserRole)
-          ?? 'client';
-        setSession(session, role);
-      } else {
+    async function bootstrap() {
+      try {
+        await initDatabase();
+        const { session } = await getSession();
+        if (session) {
+          setSession(session, session.user.role);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('[App] Bootstrap error:', err);
         setLoading(false);
+      } finally {
+        setDbReady(true);
       }
-    });
-
-    // Listen for auth state changes (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT' || !session) {
-          setSession(null, null);
-          return;
-        }
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .single();
-          const role = (profile?.role as UserRole)
-            ?? (session.user.user_metadata?.role as UserRole)
-            ?? 'client';
-          setSession(session, role);
-        }
-      },
-    );
-
-    return () => subscription.unsubscribe();
+    }
+    bootstrap();
   }, [setSession, setLoading]);
+
+  if (!dbReady) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' }}>
+        <ActivityIndicator size="large" color={COLORS.ocean} />
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

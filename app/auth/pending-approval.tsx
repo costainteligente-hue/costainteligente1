@@ -1,59 +1,61 @@
+/**
+ * PendingApprovalScreen — Costa Inteligente
+ *
+ * Mostrado a los proveedores después del registro mientras su cuenta
+ * está pendiente de aprobación. Polling cada 10 segundos para detectar aprobación.
+ */
+
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { eq } from 'drizzle-orm';
+import { getDb } from '@/lib/db/client';
+import { providers } from '@/lib/db/schema';
+import { signOut } from '@/lib/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
 import { COLORS } from '@/lib/constants';
 
-/**
- * Shown to providers after registration while their account is pending approval.
- * Also shown if their account was rejected, with a rejection reason.
- * Subscribes via Realtime to providers.status and auto-redirects on approval.
- */
 export default function PendingApprovalScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, clear } = useAuthStore();
 
   useEffect(() => {
     if (!user?.id) return;
 
-    // Subscribe to provider status changes for this user
-    const channel = supabase
-      .channel(`provider_status_${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'providers',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newStatus = payload.new?.status;
-          if (newStatus === 'approved') {
-            router.replace('/(provider)');
-          }
-        },
-      )
-      .subscribe();
+    // Poll for status changes every 10 seconds
+    const interval = setInterval(async () => {
+      try {
+        const db = getDb();
+        const rows = await db
+          .select({ status: providers.status })
+          .from(providers)
+          .where(eq(providers.userId, user.id));
+        const provider = rows[0];
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+        if (provider?.status === 'approved') {
+          clearInterval(interval);
+          router.replace('/(provider)' as any);
+        }
+      } catch (err) {
+        console.warn('[PendingApproval] Poll error:', err);
+      }
+    }, 10_000);
+
+    return () => clearInterval(interval);
   }, [user?.id]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.replace('/auth/login');
+    await signOut();
+    clear();
+    router.replace('/auth/login' as any);
   };
 
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', padding: 32 }}
     >
-      {/* Icon */}
       <View
         style={{
           width: 90,
@@ -68,27 +70,15 @@ export default function PendingApprovalScreen() {
         <MaterialIcons name="hourglass-bottom" size={48} color={COLORS.warning} />
       </View>
 
-      {/* Title */}
-      <Text
-        style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 12 }}
-      >
+      <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 12 }}>
         Cuenta en revisión
       </Text>
 
-      {/* Description */}
-      <Text
-        style={{
-          color: '#0F172A99',
-          textAlign: 'center',
-          lineHeight: 22,
-          marginBottom: 12,
-        }}
-      >
+      <Text style={{ color: '#0F172A99', textAlign: 'center', lineHeight: 22, marginBottom: 12 }}>
         Tu solicitud de registro ha sido recibida. Un administrador revisará la información
         de tu negocio y recibirás una notificación push cuando sea aprobada.
       </Text>
 
-      {/* Info card */}
       <View
         style={{
           backgroundColor: `${COLORS.info}10`,
@@ -110,10 +100,8 @@ export default function PendingApprovalScreen() {
         </Text>
       </View>
 
-      {/* Spinner */}
       <ActivityIndicator color={COLORS.warning} size="large" style={{ marginBottom: 24 }} />
 
-      {/* Logout */}
       <TouchableOpacity
         onPress={handleLogout}
         style={{

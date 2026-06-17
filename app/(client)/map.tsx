@@ -8,7 +8,7 @@ import { InfoBox } from '@/components/ui/InfoBox';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { CardBox } from '@/components/ui/CardBox';
 
-// ─── Seed zones (replaces Supabase query during dev) ─────────────────────────
+// ─── Seed zones para cuando la base de datos está vacía ──────────────────────
 const SEED_ZONES = [
   { id: 'z1', name: 'Bajo de Chila', level: 'intermedio', type: 'Offshore', latitude: 17.58, longitude: -101.62, is_active: true, description: 'Zona de aguas profundas ideal para pez vela y marlín.', species: ['Pez vela', 'Marlín azul', 'Dorado'] },
   { id: 'z2', name: 'La Ropa', level: 'principiante', type: 'Playa', latitude: 17.63, longitude: -101.55, is_active: true, description: 'Playa protegida perfecta para principiantes y pesca desde la orilla.', species: ['Jurel', 'Sierra', 'Robalo'] },

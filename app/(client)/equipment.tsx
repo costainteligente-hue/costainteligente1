@@ -3,7 +3,9 @@ import { ScrollView, View, Text, TouchableOpacity, ActivityIndicator } from 'rea
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { eq, and } from 'drizzle-orm';
+import { getDb } from '@/lib/db/client';
+import { equipment as equipmentTable } from '@/lib/db/schema';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
@@ -21,7 +23,7 @@ interface Equipment {
   image_url: string | null;
 }
 
-// Seed data while Supabase has no records
+// Datos de muestra para cuando la base de datos está vacía
 const SEED_EQUIPMENT: Equipment[] = [
   { id: 'e1', name: 'Caña spinning 7 ft acción media', description: 'Ideal para pesca costera con señuelos ligeros. Fácil de manejar para principiantes.', level: 'principiante', recommended_use: 'Pesca desde la orilla o embarcación pequeña', image_url: null },
   { id: 'e2', name: 'Carrete spinning 3000', description: 'Carrete de relación 5.2:1, suficiente para pesca recreativa en bahía.', level: 'principiante', recommended_use: 'Peces de fondo y especies costeras', image_url: null },
@@ -38,16 +40,14 @@ function useEquipment(level: Level) {
   return useQuery({
     queryKey: ['equipment', level],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('equipment')
-        .select('*')
-        .eq('level', level)
-        .eq('is_active', true)
-        .order('name');
-      if (error) throw error;
-      return (data as Equipment[]) ?? [];
+      const db = getDb();
+      const rows = await db
+        .select()
+        .from(equipmentTable)
+        .where(and(eq(equipmentTable.level, level), eq(equipmentTable.isActive, true)));
+      return rows as Equipment[];
     },
-    staleTime: 1000 * 60 * 60 * 24, // 24 h
+    staleTime: 1000 * 60 * 60 * 24,
     gcTime: 1000 * 60 * 60 * 48,
     retry: 1,
   });
@@ -63,7 +63,7 @@ export default function EquipmentScreen() {
   const [level, setLevel] = useState<Level>('principiante');
   const { data, isLoading, isError } = useEquipment(level);
 
-  // Use seed data if Supabase returns empty
+  // Usar seed si la DB está vacía
   const items: Equipment[] =
     data && data.length > 0
       ? data

@@ -1,3 +1,7 @@
+/**
+ * RegisterProviderScreen — Costa Inteligente
+ */
+
 import React, { useState } from 'react';
 import {
   ScrollView, View, Text, TextInput, TouchableOpacity,
@@ -6,7 +10,11 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { eq } from 'drizzle-orm';
+import { signUp } from '@/lib/services/auth.service';
+import { getDb } from '@/lib/db/client';
+import { providers } from '@/lib/db/schema';
+import { useAuthStore } from '@/stores/authStore';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { InfoBox } from '@/components/ui/InfoBox';
@@ -37,6 +45,18 @@ function validate(form: FormState): Errors {
   if (form.address.trim().length < 10) errors.address = 'La dirección debe tener al menos 10 caracteres.';
   if (form.address.trim().length > 200) errors.address = 'Máximo 200 caracteres.';
   return errors;
+}
+
+function generateId(): string {
+  const bytes = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+  const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+  return [
+    hex.slice(0, 8), hex.slice(8, 12),
+    '4' + hex.slice(13, 16),
+    ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16) + hex.slice(17, 20),
+    hex.slice(20, 32),
+  ].join('-');
 }
 
 function Field({
@@ -80,6 +100,7 @@ function Field({
 
 export default function RegisterProviderScreen() {
   const router = useRouter();
+  const { setLoading: setAuthLoading } = useAuthStore();
   const [form, setForm] = useState<FormState>({
     email: '', password: '', businessName: '', rfc: '', phone: '', address: '',
   });
@@ -102,48 +123,37 @@ export default function RegisterProviderScreen() {
     setLoading(true);
 
     try {
-      // 1. Create auth user with role: 'provider' in metadata
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      // 1. Create auth user + profile
+      const { session, error: signUpError } = await signUp({
         email: form.email.trim(),
         password: form.password,
-        options: {
-          data: { full_name: form.businessName.trim(), role: 'provider' },
-        },
+        fullName: form.businessName.trim(),
+        role: 'provider',
       });
 
-      if (signUpError) {
-        setErrors({ email: `Error: ${signUpError.message}` });
+      if (signUpError || !session) {
+        setErrors({ email: signUpError ?? 'Error al crear la cuenta.' });
         setLoading(false);
         return;
       }
 
-      if (!authData.user) {
-        setErrors({ email: 'Error inesperado. Intenta de nuevo.' });
-        setLoading(false);
-        return;
-      }
-
-      // 2. Insert provider record with status: 'pending' (atomically with auth creation)
-      const { error: providerError } = await supabase.from('providers').insert({
-        user_id: authData.user.id,
-        business_name: form.businessName.trim(),
-        service_type: 'general',
+      // 2. Insert provider record with status: 'pending'
+      const db = getDb();
+      await db.insert(providers).values({
+        id: generateId(),
+        userId: session.user.id,
+        businessName: form.businessName.trim(),
+        serviceType: 'general',
         rfc: form.rfc.toUpperCase().trim(),
         phone: form.phone.trim(),
         address: form.address.trim(),
         status: 'pending',
       });
 
-      if (providerError) {
-        // Auth was created but provider record failed — inform user
-        setErrors({ email: 'Cuenta creada pero hubo un error al guardar el negocio. Contacta a soporte.' });
-        setLoading(false);
-        return;
-      }
-
       setLoading(false);
       router.replace('/auth/pending-approval' as any);
-    } catch {
+    } catch (err) {
+      console.error('[RegisterProvider]', err);
       setErrors({ email: 'Error de red. Verifica tu conexión e intenta de nuevo.' });
       setLoading(false);
     }
@@ -166,10 +176,10 @@ export default function RegisterProviderScreen() {
             <Text style={{ fontWeight: '800' }}>Finalidades:</Text> gestión de cuenta, publicación de servicios, reservaciones, pagos y notificaciones.
           </Text>
           <Text style={{ color: '#0F172A', lineHeight: 22, marginBottom: 12 }}>
-            <Text style={{ fontWeight: '800' }}>Transferencias:</Text> Supabase (almacenamiento), Mercado Pago (pagos), Expo (notificaciones push).
+            <Text style={{ fontWeight: '800' }}>Transferencias:</Text> Mercado Pago (pagos), Expo (notificaciones push).
           </Text>
           <Text style={{ color: '#0F172A', lineHeight: 22, marginBottom: 20 }}>
-            <Text style={{ fontWeight: '800' }}>Derechos ARCO:</Text> acceso, rectificación, cancelación y oposición en privacidad@costainteligente.mx. Retención: mientras la cuenta esté activa; eliminación 30 días tras solicitud.
+            <Text style={{ fontWeight: '800' }}>Derechos ARCO:</Text> acceso, rectificación, cancelación y oposición en privacidad@costainteligente.mx.
           </Text>
           <View className="flex-row gap-3">
             <TouchableOpacity

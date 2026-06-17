@@ -6,7 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useProviderStore } from '@/stores/providerStore';
-import { supabase } from '@/lib/supabase';
+import { signOut } from '@/lib/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
@@ -114,7 +114,7 @@ export default function SettingsScreen() {
   const [darkMode, setDarkMode] = useState(false);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     clear();
   };
 
@@ -253,7 +253,7 @@ export default function SettingsScreen() {
             icon="info-outline"
             title="Información del sistema"
             subtitle="Estado del frontend y módulos."
-            onPress={() => Alert.alert('Sistema', 'Frontend funcional. Backend: Supabase pendiente de conexión.')}
+            onPress={() => Alert.alert('Sistema', 'Frontend funcional. Base de datos SQLite activa.')}
             accentColor={accentColor}
           />
           <ActionRow

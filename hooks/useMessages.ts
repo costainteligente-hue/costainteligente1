@@ -1,54 +1,28 @@
-import { useEffect } from 'react';
+/**
+ * useMessages — Costa Inteligente
+ * Mensajes de chat con polling cada 5 segundos via React Query.
+ */
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { messagesRepository } from '@/lib/repositories/messages.repository';
 
 export function useMessages(reservationId: string) {
-  const queryClient = useQueryClient();
-
-  // Initial fetch
   const query = useQuery({
     queryKey: ['messages', reservationId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`*, profiles!sender_id ( full_name, avatar_url )`)
-        .eq('reservation_id', reservationId)
-        .order('sent_at', { ascending: true })
-        .limit(50);
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => messagesRepository.findByReservationId(reservationId),
     enabled: !!reservationId,
     staleTime: 0,
+    refetchInterval: 5000, // polling cada 5 segundos
   });
 
-  // Realtime subscription
-  const subscribeToMessages = () => {
-    const channel = supabase
-      .channel(`messages:${reservationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `reservation_id=eq.${reservationId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['messages', reservationId] });
-        },
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  };
+  // Mantenido por compatibilidad con código existente
+  const subscribeToMessages = () => () => {};
 
   return { ...query, subscribeToMessages };
 }
 
 export function useSendMessage() {
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async ({
       reservationId,
@@ -62,13 +36,7 @@ export function useSendMessage() {
       if (!content.trim() || content.trim().length > 500) {
         throw new Error('El mensaje debe tener entre 1 y 500 caracteres.');
       }
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({ reservation_id: reservationId, sender_id: senderId, content: content.trim() })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      return messagesRepository.create({ reservationId, senderId, content });
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['messages', variables.reservationId] });
