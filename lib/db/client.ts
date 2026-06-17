@@ -1,48 +1,45 @@
 /**
  * Database client — Costa Inteligente
- * PostgreSQL via Railway usando postgres.js + Drizzle ORM.
+ *
+ * En el SERVIDOR (API routes / Node.js): conecta directo a PostgreSQL via postgres.js
+ * En el BROWSER (Expo Web): no se usa directamente — los repositorios llaman a /api/
+ *
  * @module lib/db/client
  */
 
-import postgres from 'postgres';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import * as schema from './schema';
+import { Platform } from 'react-native';
 
-const DATABASE_URL = process.env.DATABASE_URL ?? process.env.EXPO_PUBLIC_DATABASE_URL ?? '';
+// Solo importamos postgres en entorno servidor (Node.js)
+let _db: any = null;
 
-if (!DATABASE_URL) {
-  console.warn('[DB] DATABASE_URL no está definida. La base de datos no funcionará.');
-}
-
-// Singleton — una sola conexión por proceso
-let _db: ReturnType<typeof drizzle> | null = null;
-
-/**
- * Devuelve la instancia Drizzle (lazy init).
- * Usar siempre getDb() en lugar de instanciar directamente.
- */
 export function getDb() {
+  if (typeof window !== 'undefined') {
+    throw new Error('[DB] getDb() no debe llamarse en el browser. Usa los repositorios que llaman a /api/');
+  }
   if (!_db) {
-    const client = postgres(DATABASE_URL, {
-      ssl: 'require',           // Railway requiere SSL
-      max: 10,                  // pool de conexiones
-      idle_timeout: 20,
-      connect_timeout: 10,
-    });
+    // Dynamic require para evitar que el bundler web lo incluya
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const postgres = require('postgres');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { drizzle } = require('drizzle-orm/postgres-js');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const schema = require('./schema');
+
+    const DATABASE_URL = process.env.DATABASE_URL ?? '';
+    const client = postgres(DATABASE_URL, { ssl: 'require', max: 10 });
     _db = drizzle(client, { schema });
   }
   return _db;
 }
 
-/**
- * Inicializa la conexión a la base de datos.
- * Llamar una vez en el arranque de la app (_layout.tsx).
- * Con PostgreSQL las migraciones se aplican via: npx drizzle-kit push
- */
 export async function initDatabase(): Promise<void> {
+  // En el browser no hay DB local — la conexión es via API
+  if (typeof window !== 'undefined') {
+    console.log('[DB] Browser mode: usando API endpoints');
+    return;
+  }
   try {
     const db = getDb();
-    // Verificar conexión con una query simple
     await db.execute('SELECT 1' as any);
     console.log('[DB] PostgreSQL conectado correctamente.');
   } catch (err) {
