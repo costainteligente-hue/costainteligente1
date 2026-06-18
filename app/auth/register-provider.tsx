@@ -10,10 +10,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { eq } from 'drizzle-orm';
 import { signUp } from '@/lib/services/auth.service';
-import { getDb } from '@/lib/db/client';
-import { providers } from '@/lib/db/schema';
 import { useAuthStore } from '@/stores/authStore';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
@@ -45,18 +42,6 @@ function validate(form: FormState): Errors {
   if (form.address.trim().length < 10) errors.address = 'La dirección debe tener al menos 10 caracteres.';
   if (form.address.trim().length > 200) errors.address = 'Máximo 200 caracteres.';
   return errors;
-}
-
-function generateId(): string {
-  const bytes = new Uint8Array(16);
-  for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
-  const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-  return [
-    hex.slice(0, 8), hex.slice(8, 12),
-    '4' + hex.slice(13, 16),
-    ((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16) + hex.slice(17, 20),
-    hex.slice(20, 32),
-  ].join('-');
 }
 
 function Field({
@@ -123,32 +108,28 @@ export default function RegisterProviderScreen() {
     setLoading(true);
 
     try {
-      // 1. Create auth user + profile
-      const { session, error: signUpError } = await signUp({
-        email: form.email.trim(),
-        password: form.password,
-        fullName: form.businessName.trim(),
-        role: 'provider',
+      // Un solo endpoint que crea usuario + perfil + proveedor atómicamente
+      const API_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
+      const res = await fetch(`${API_URL}/api/auth/register-provider`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email:        form.email.trim(),
+          password:     form.password,
+          businessName: form.businessName.trim(),
+          rfc:          form.rfc.toUpperCase().trim(),
+          phone:        form.phone.trim(),
+          address:      form.address.trim(),
+        }),
       });
 
-      if (signUpError || !session) {
-        setErrors({ email: signUpError ?? 'Error al crear la cuenta.' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrors({ email: data.error ?? 'Error al crear la cuenta.' });
         setLoading(false);
         return;
       }
-
-      // 2. Insert provider record with status: 'pending'
-      const db = getDb();
-      await db.insert(providers).values({
-        id: generateId(),
-        userId: session.user.id,
-        businessName: form.businessName.trim(),
-        serviceType: 'general',
-        rfc: form.rfc.toUpperCase().trim(),
-        phone: form.phone.trim(),
-        address: form.address.trim(),
-        status: 'pending',
-      });
 
       setLoading(false);
       router.replace('/auth/pending-approval' as any);
