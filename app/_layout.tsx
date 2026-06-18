@@ -1,6 +1,5 @@
 /**
  * Root Layout — Costa Inteligente
- * Inicializa PostgreSQL, verifica la sesión persistida y configura la navegación.
  */
 
 import { useEffect, useState } from 'react';
@@ -18,7 +17,7 @@ import { COLORS } from '@/lib/constants';
 
 export default function RootLayout() {
   const { setSession, setLoading } = useAuthStore();
-  const [dbReady, setDbReady] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     async function bootstrap() {
@@ -34,20 +33,14 @@ export default function RootLayout() {
         console.error('[App] Bootstrap error:', err);
         setLoading(false);
       } finally {
-        setDbReady(true);
+        setReady(true);
       }
     }
     bootstrap();
-  }, [setSession, setLoading]);
+  }, []);
 
-  if (!dbReady) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' }}>
-        <ActivityIndicator size="large" color={COLORS.ocean} />
-      </View>
-    );
-  }
-
+  // Renderiza siempre el Stack — la navegación ocurre DENTRO de index.tsx
+  // no en el layout, para evitar "navigate before mounting"
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
