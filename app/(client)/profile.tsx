@@ -22,6 +22,7 @@ export default function ClientProfileScreen() {
   const handleLogout = async () => {
     await signOut();
     clear();
+    router.replace('/auth/login');
   };
 
   return (

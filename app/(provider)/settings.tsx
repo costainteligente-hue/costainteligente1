@@ -116,6 +116,7 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     await signOut();
     clear();
+    router.replace('/auth/login');
   };
 
   return (

@@ -7,9 +7,6 @@ import { useQuery } from '@tanstack/react-query';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
-import { eq } from 'drizzle-orm';
-import { getDb } from '@/lib/db/client';
-import { profiles, providers } from '@/lib/db/schema';
 import { signOut } from '@/lib/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -17,24 +14,13 @@ function useAdminStats() {
   return useQuery({
     queryKey: ['admin_stats'],
     queryFn: async () => {
-      const db = getDb();
-      const clientRows = await db
-        .select({ id: profiles.id })
-        .from(profiles)
-        .where(eq(profiles.role, 'client'));
-      const approvedRows = await db
-        .select({ id: providers.id })
-        .from(providers)
-        .where(eq(providers.status, 'approved'));
-      const pendingRows = await db
-        .select({ id: providers.id })
-        .from(providers)
-        .where(eq(providers.status, 'pending'));
-      return {
-        clients: clientRows.length,
-        providers: approvedRows.length,
-        pending: pendingRows.length,
-      };
+      try {
+        const res = await fetch('/api/admin/stats');
+        if (!res.ok) return { clients: 0, providers: 0, pending: 0 };
+        return res.json();
+      } catch {
+        return { clients: 0, providers: 0, pending: 0 };
+      }
     },
   });
 }
@@ -91,8 +77,8 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     await signOut();
-    // clear() sets role=null, isLoading=false which triggers index.tsx → /auth/login
     clear();
+    router.replace('/auth/login');
   };
 
   return (
