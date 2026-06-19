@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   ScrollView, View, Text, TouchableOpacity, ActivityIndicator,
-  Modal, StyleSheet, Platform,
+  Modal, StyleSheet, Platform, Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -209,9 +209,11 @@ function TutorialCard({ item, onPlay }: { item: Tutorial; onPlay: () => void }) 
         }}
       >
         {thumbUrl ? (
-          <View style={StyleSheet.absoluteFill}>
-            {/* Use Image component for thumbnail */}
-          </View>
+          <Image
+            source={{ uri: thumbUrl }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
         ) : null}
 
         {/* Dark overlay */}

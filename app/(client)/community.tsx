@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ScrollView, View, Text, TouchableOpacity, Modal,
-  TextInput, KeyboardAvoidingView, Platform, Alert, FlatList,
+  TextInput, KeyboardAvoidingView, Platform, Alert, Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,25 @@ import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InfoBox } from '@/components/ui/InfoBox';
+
+// ─── Foto de especie desde Wikimedia ─────────────────────────────────────────
+const speciesPhotoCache: Record<string, string | null> = {};
+async function fetchSpeciesPhoto(species: string): Promise<string | null> {
+  if (species in speciesPhotoCache) return speciesPhotoCache[species];
+  try {
+    const res  = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(species)}&prop=pageimages&format=json&pithumbsize=500&origin=*`);
+    const data = await res.json();
+    const page = Object.values(data?.query?.pages ?? {})[0] as any;
+    const url  = page?.thumbnail?.source ?? null;
+    speciesPhotoCache[species] = url;
+    return url;
+  } catch { speciesPhotoCache[species] = null; return null; }
+}
+function useSpeciesPhoto(species: string) {
+  const [photo, setPhoto] = useState<string | null>(null);
+  useEffect(() => { fetchSpeciesPhoto(species).then(setPhoto); }, [species]);
+  return photo;
+}
 
 interface CatchPost {
   id: string;
@@ -203,22 +222,22 @@ function NewPostModal({ onSave, onClose }: { onSave: (p: CatchPost) => void; onC
 }
 
 function CatchCard({ post, onDelete }: { post: CatchPost; onDelete?: () => void }) {
+  const photo = useSpeciesPhoto(post.species);
   return (
     <CardBox>
-      {/* Photo placeholder */}
-      <View
-        style={{
-          height: 140,
-          borderRadius: 14,
-          backgroundColor: `${COLORS.ocean}15`,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 12,
-          borderWidth: 1,
-          borderColor: `${COLORS.ocean}20`,
-        }}
-      >
-        <MaterialIcons name="set-meal" size={40} color={COLORS.ocean} />
+      {/* Foto de la especie */}
+      <View style={{ height: 140, borderRadius: 14, overflow: 'hidden', marginBottom: 12, backgroundColor: `${COLORS.ocean}15` }}>
+        {photo ? (
+          <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <MaterialIcons name="set-meal" size={40} color={COLORS.ocean} />
+          </View>
+        )}
+        {/* Badge de especie sobre la foto */}
+        <View style={{ position: 'absolute', bottom: 8, left: 8, backgroundColor: 'rgba(15,23,42,0.75)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>🐟 {post.species}</Text>
+        </View>
       </View>
 
       <View className="flex-row items-start justify-between">

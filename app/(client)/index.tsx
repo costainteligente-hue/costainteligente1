@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,25 @@ import { COLORS, MONTH_NAMES } from '@/lib/constants';
 import { useAuthStore } from '@/stores/authStore';
 import { useWeather } from '@/hooks/useWeather';
 import { CardBox } from '@/components/ui/CardBox';
+
+// ─── Wikimedia photo hook ─────────────────────────────────────────────────────
+const wikiCache: Record<string, string | null> = {};
+function useWikiPhoto(term: string) {
+  const [photo, setPhoto] = useState<string | null>(null);
+  useEffect(() => {
+    if (term in wikiCache) { setPhoto(wikiCache[term]); return; }
+    fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(term)}&prop=pageimages&format=json&pithumbsize=500&origin=*`)
+      .then((r) => r.json())
+      .then((data) => {
+        const page = Object.values(data?.query?.pages ?? {})[0] as any;
+        const url  = page?.thumbnail?.source ?? null;
+        wikiCache[term] = url;
+        setPhoto(url);
+      })
+      .catch(() => { wikiCache[term] = null; });
+  }, [term]);
+  return photo;
+}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface UserPrefs {
@@ -120,9 +139,9 @@ function buildQuickCards(prefs: UserPrefs): QuickCard[] {
 
 // ─── Zonas destacadas (seed) ───────────────────────────────────────────────────
 const FEATURED_ZONES = [
-  { id: 'z2', name: 'La Ropa', level: 'principiante', type: 'Playa', risk: 'Bajo', species: 'Jurel, Robalo' },
-  { id: 'z4', name: 'Bahía de Zihuatanejo', level: 'principiante', type: 'Bahía', risk: 'Bajo', species: 'Huachinango, Mojarra' },
-  { id: 'z1', name: 'Bajo de Chila', level: 'intermedio', type: 'Offshore', risk: 'Medio', species: 'Pez vela, Dorado' },
+  { id: 'z2', name: 'La Ropa',              level: 'principiante', type: 'Playa',    risk: 'Bajo',  species: 'Jurel, Robalo',         wikimedia: 'Playa_La_Ropa' },
+  { id: 'z4', name: 'Bahía de Zihuatanejo', level: 'principiante', type: 'Bahía',    risk: 'Bajo',  species: 'Huachinango, Mojarra',   wikimedia: 'Bahía_de_Zihuatanejo' },
+  { id: 'z1', name: 'Bajo de Chila',        level: 'intermedio',   type: 'Offshore', risk: 'Medio', species: 'Pez vela, Dorado',       wikimedia: 'Zihuatanejo' },
 ];
 
 const LEVEL_COLOR: Record<string, string> = {
@@ -146,6 +165,39 @@ const SPECIES_BY_MONTH: Record<number, string[]> = {
   10: ['Pez vela', 'Marlín'],
   11: ['Huachinango', 'Robalo'],
 };
+
+// ─── Tarjeta de zona con foto ─────────────────────────────────────────────────
+function ZoneCard({ zone, onPress }: { zone: typeof FEATURED_ZONES[0]; onPress: () => void }) {
+  const photo = useWikiPhoto(zone.wikimedia);
+  const color = LEVEL_COLOR[zone.level];
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{ width: 180, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}
+    >
+      {/* Foto */}
+      <View style={{ height: 110, backgroundColor: `${color}15` }}>
+        {photo
+          ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><MaterialIcons name="place" size={32} color={color} /></View>
+        }
+        <View style={{ position: 'absolute', top: 8, left: 8, backgroundColor: color, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{zone.level}</Text>
+        </View>
+      </View>
+      {/* Info */}
+      <View style={{ padding: 12 }}>
+        <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 13 }}>{zone.name}</Text>
+        <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>{zone.type}</Text>
+        <Text style={{ color: COLORS.success, fontSize: 11, fontWeight: '700', marginTop: 4 }}>🐟 {zone.species}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+          <MaterialIcons name="security" size={12} color={zone.risk === 'Bajo' ? COLORS.success : COLORS.warning} />
+          <Text style={{ color: zone.risk === 'Bajo' ? COLORS.success : COLORS.warning, fontSize: 11, fontWeight: '700' }}>Riesgo {zone.risk}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ClientDashboard() {
@@ -246,38 +298,9 @@ export default function ClientDashboard() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', gap: 12, paddingRight: 16 }}>
             {FEATURED_ZONES.filter((z) =>
-              prefs.level === 'advanced' || !['avanzado'].includes(z.level)
+              prefs.level === 'advanced' || z.level !== 'avanzado'
             ).map((z) => (
-              <TouchableOpacity
-                key={z.id}
-                onPress={() => router.push('/(client)/map' as any)}
-                style={{
-                  width: 180, backgroundColor: '#fff', borderRadius: 16,
-                  padding: 14, borderWidth: 1, borderColor: '#E2E8F0',
-                  shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: `${LEVEL_COLOR[z.level]}20`, alignItems: 'center', justifyContent: 'center' }}>
-                    <MaterialIcons name="place" size={18} color={LEVEL_COLOR[z.level]} />
-                  </View>
-                  <View style={{ backgroundColor: `${LEVEL_COLOR[z.level]}20`, borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 }}>
-                    <Text style={{ color: LEVEL_COLOR[z.level], fontSize: 10, fontWeight: '800' }}>
-                      {z.level.charAt(0).toUpperCase() + z.level.slice(1)}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 14, marginBottom: 4 }}>{z.name}</Text>
-                <Text style={{ color: '#64748B', fontSize: 11 }}>{z.type}</Text>
-                <Text style={{ color: COLORS.success, fontSize: 11, fontWeight: '700', marginTop: 4 }}>🐟 {z.species}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
-                  <MaterialIcons name="security" size={13} color={z.risk === 'Bajo' ? COLORS.success : COLORS.warning} />
-                  <Text style={{ color: z.risk === 'Bajo' ? COLORS.success : COLORS.warning, fontSize: 11, fontWeight: '700' }}>
-                    Riesgo {z.risk}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+              <ZoneCard key={z.id} zone={z} onPress={() => router.push('/(client)/map' as any)} />
             ))}
           </View>
         </ScrollView>

@@ -1,11 +1,41 @@
-import React, { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, MONTH_NAMES } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
 import { InfoBox } from '@/components/ui/InfoBox';
+
+// ─── Foto de especie desde Wikimedia ─────────────────────────────────────────
+const photoCache: Record<string, string | null> = {};
+async function fetchPhoto(species: string): Promise<string | null> {
+  if (species in photoCache) return photoCache[species];
+  try {
+    const res  = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(species)}&prop=pageimages&format=json&pithumbsize=400&origin=*`);
+    const data = await res.json();
+    const page = Object.values(data?.query?.pages ?? {})[0] as any;
+    const url  = page?.thumbnail?.source ?? null;
+    photoCache[species] = url;
+    return url;
+  } catch { photoCache[species] = null; return null; }
+}
+
+function SpeciesChip({ name, color }: { name: string; color: string }) {
+  const [photo, setPhoto] = useState<string | null>(null);
+  useEffect(() => { fetchPhoto(name).then(setPhoto); }, [name]);
+  return (
+    <View style={{ alignItems: 'center', gap: 6, width: 88 }}>
+      <View style={{ width: 72, height: 72, borderRadius: 14, overflow: 'hidden', backgroundColor: `${color}15`, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: `${color}30` }}>
+        {photo
+          ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          : <MaterialIcons name="set-meal" size={28} color={color} />
+        }
+      </View>
+      <Text style={{ color: '#0F172A', fontWeight: '700', fontSize: 11, textAlign: 'center' }} numberOfLines={2}>{name}</Text>
+    </View>
+  );
+}
 
 // ─── Seed season data ─────────────────────────────────────────────────────────
 const SEASON_DATA: Record<number, {
@@ -129,52 +159,24 @@ export default function SeasonsScreen() {
 
         {/* Probable species */}
         <CardBox>
-          <View className="flex-row items-center gap-2 mb-3">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <MaterialIcons name="star" size={20} color={COLORS.caution} />
             <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>Más probables</Text>
           </View>
-          <View className="flex-row flex-wrap gap-2">
-            {season.probable.map((s) => (
-              <View
-                key={s}
-                style={{
-                  backgroundColor: `${COLORS.success}15`,
-                  borderRadius: 999,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderWidth: 1,
-                  borderColor: `${COLORS.success}30`,
-                }}
-              >
-                <Text style={{ color: COLORS.success, fontWeight: '700', fontSize: 13 }}>{s}</Text>
-              </View>
-            ))}
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+            {season.probable.map((s) => <SpeciesChip key={s} name={s} color={COLORS.success} />)}
+          </ScrollView>
         </CardBox>
 
         {/* Possible species */}
         <CardBox>
-          <View className="flex-row items-center gap-2 mb-3">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <MaterialIcons name="star-half" size={20} color={COLORS.info} />
             <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>Posibles</Text>
           </View>
-          <View className="flex-row flex-wrap gap-2">
-            {season.possible.map((s) => (
-              <View
-                key={s}
-                style={{
-                  backgroundColor: `${COLORS.info}12`,
-                  borderRadius: 999,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderWidth: 1,
-                  borderColor: `${COLORS.info}30`,
-                }}
-              >
-                <Text style={{ color: COLORS.info, fontWeight: '700', fontSize: 13 }}>{s}</Text>
-              </View>
-            ))}
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+            {season.possible.map((s) => <SpeciesChip key={s} name={s} color={COLORS.info} />)}
+          </ScrollView>
         </CardBox>
 
         {/* Suggested zones */}

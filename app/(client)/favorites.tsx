@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '@/lib/constants';
-import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useRouter } from 'expo-router';
 
 const SEED_FAVORITES = [
-  { id: 'z1', name: 'Bajo de Chila', level: 'intermedio', type: 'Offshore', species: ['Pez vela', 'Marlín azul'], savedAt: '10/07/2026' },
-  { id: 'z4', name: 'Bahía de Zihuatanejo', level: 'principiante', type: 'Bahía', species: ['Huachinango', 'Robalo'], savedAt: '05/07/2026' },
+  { id: 'z1', name: 'Bajo de Chila', level: 'intermedio', type: 'Offshore', species: ['Pez vela', 'Marlín azul'], savedAt: '10/07/2026', wikimedia: 'Zihuatanejo' },
+  { id: 'z4', name: 'Bahía de Zihuatanejo', level: 'principiante', type: 'Bahía', species: ['Huachinango', 'Robalo'], savedAt: '05/07/2026', wikimedia: 'Bahía_de_Zihuatanejo' },
 ];
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -18,6 +17,53 @@ const LEVEL_COLORS: Record<string, string> = {
   intermedio: COLORS.warning,
   avanzado: COLORS.danger,
 };
+
+// Wikimedia photo hook
+const wikiCache: Record<string, string | null> = {};
+function useWikiPhoto(term: string) {
+  const [photo, setPhoto] = useState<string | null>(null);
+  useEffect(() => {
+    if (term in wikiCache) { setPhoto(wikiCache[term]); return; }
+    fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(term)}&prop=pageimages&format=json&pithumbsize=500&origin=*`)
+      .then((r) => r.json())
+      .then((data) => {
+        const page = Object.values(data?.query?.pages ?? {})[0] as any;
+        const url  = page?.thumbnail?.source ?? null;
+        wikiCache[term] = url;
+        setPhoto(url);
+      })
+      .catch(() => { wikiCache[term] = null; });
+  }, [term]);
+  return photo;
+}
+
+function FavoriteCard({ zone, onRemove }: { zone: typeof SEED_FAVORITES[0]; onRemove: () => void }) {
+  const photo = useWikiPhoto(zone.wikimedia);
+  const color = LEVEL_COLORS[zone.level];
+  return (
+    <View style={{ backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 2 }}>
+      {/* Foto */}
+      <View style={{ height: 130, backgroundColor: `${color}15` }}>
+        {photo
+          ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><MaterialIcons name="place" size={36} color={color} /></View>
+        }
+        <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: color, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{zone.level}</Text>
+        </View>
+        <TouchableOpacity onPress={onRemove} style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(220,38,38,0.85)', borderRadius: 999, padding: 6 }}>
+          <MaterialIcons name="favorite" size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
+      {/* Info */}
+      <View style={{ padding: 12 }}>
+        <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>{zone.name}</Text>
+        <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>{zone.type} · {zone.species.join(', ')}</Text>
+        <Text style={{ color: '#94A3B8', fontSize: 11, marginTop: 4 }}>Guardado el {zone.savedAt}</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function FavoritesScreen() {
   const router = useRouter();
@@ -42,38 +88,16 @@ export default function FavoritesScreen() {
             onPress={() => router.push('/(client)/map')}
           />
         ) : (
-          favorites.map((zone) => (
-            <CardBox key={zone.id}>
-              <View className="flex-row items-center gap-3">
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 16,
-                    backgroundColor: `${LEVEL_COLORS[zone.level]}20`,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <MaterialIcons name="place" size={26} color={LEVEL_COLORS[zone.level]} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>{zone.name}</Text>
-                  <Text style={{ color: '#0F172A99', fontSize: 13 }}>
-                    {zone.type} · {zone.species.join(', ')}
-                  </Text>
-                  <Text style={{ color: '#94A3B8', fontSize: 11, marginTop: 2 }}>
-                    Guardado el {zone.savedAt}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setFavorites((prev) => prev.filter((f) => f.id !== zone.id))}
-                >
-                  <MaterialIcons name="favorite" size={24} color={COLORS.danger} />
-                </TouchableOpacity>
-              </View>
-            </CardBox>
-          ))
+          favorites.map((zone) => {
+            const color = LEVEL_COLORS[zone.level];
+            return (
+              <FavoriteCard
+                key={zone.id}
+                zone={zone}
+                onRemove={() => setFavorites((prev) => prev.filter((f) => f.id !== zone.id))}
+              />
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
