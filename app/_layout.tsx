@@ -51,6 +51,7 @@ export default function RootLayout() {
           <Stack.Screen name="auth/register-provider" />
           <Stack.Screen name="auth/email-verification" />
           <Stack.Screen name="auth/pending-approval" />
+          <Stack.Screen name="auth/onboarding" />
           <Stack.Screen name="(client)" />
           <Stack.Screen name="(provider)" />
           <Stack.Screen name="(admin)" />

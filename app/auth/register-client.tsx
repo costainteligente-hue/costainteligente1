@@ -59,7 +59,7 @@ export default function RegisterClientScreen() {
     }
 
     setSession(session, 'client');
-    router.replace('/(client)' as any);
+    router.replace('/auth/onboarding' as any);
   };
 
   if (showPrivacy) {

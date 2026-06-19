@@ -222,13 +222,15 @@ export default function ClientProfileScreen() {
             Accesos rápidos
           </Text>
           {[
-            { icon: 'gavel', label: 'Normas de pesca', sublabel: 'Licencias, vedas y reglamentos', onPress: () => router.push('/(client)/normas-pesca' as any), badge: 'Nuevo' },
-            { icon: 'favorite', label: 'Mis favoritos', sublabel: 'Zonas guardadas', onPress: () => router.push('/(client)/favorites') },
-            { icon: 'history', label: 'Mis reservaciones', sublabel: 'Historial y activas', onPress: () => router.push('/(client)/reservations' as any) },
-            { icon: 'storefront', label: 'Explorar servicios', sublabel: 'Lanchas, guías, restaurantes', onPress: () => router.push('/(client)/services' as any) },
-            { icon: 'straighten', label: 'Equipo recomendado', sublabel: 'Por nivel de experiencia', onPress: () => router.push('/(client)/equipment' as any) },
-            { icon: 'play-circle-outline', label: 'Tutoriales', sublabel: 'Videos de técnicas', onPress: () => router.push('/(client)/tutorials' as any) },
-            { icon: 'people', label: 'Comunidad', sublabel: 'Fotos y capturas', onPress: () => router.push('/(client)/community') },
+            { icon: 'gavel',            label: 'Normas de pesca',   sublabel: 'Licencias, vedas y reglamentos', onPress: () => router.push('/(client)/normas-pesca' as any),  badge: 'Nuevo' },
+            { icon: 'favorite',         label: 'Mis favoritos',     sublabel: 'Zonas guardadas',                onPress: () => router.push('/(client)/favorites') },
+            { icon: 'history',          label: 'Mis reservaciones', sublabel: 'Historial y activas',            onPress: () => router.push('/(client)/reservations' as any) },
+            { icon: 'report-problem',   label: 'Reportar problema', sublabel: 'Enviar reporte al admin',        onPress: () => router.push('/(client)/reportar' as any) },
+            { icon: 'add-location-alt', label: 'Sugerir zona',      sublabel: 'Proponer nueva zona de pesca',   onPress: () => router.push('/(client)/sugerir-zona' as any) },
+            { icon: 'storefront',       label: 'Explorar servicios', sublabel: 'Lanchas, guías, restaurantes',  onPress: () => router.push('/(client)/services' as any) },
+            { icon: 'straighten',       label: 'Equipo recomendado', sublabel: 'Por nivel de experiencia',     onPress: () => router.push('/(client)/equipment' as any) },
+            { icon: 'play-circle-outline', label: 'Tutoriales',     sublabel: 'Videos de técnicas',            onPress: () => router.push('/(client)/tutorials' as any) },
+            { icon: 'people',           label: 'Comunidad',         sublabel: 'Fotos y capturas',              onPress: () => router.push('/(client)/community') },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}
