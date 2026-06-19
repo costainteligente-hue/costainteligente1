@@ -5,12 +5,12 @@
     "version": "1.0.0",
     "scheme": "costainteligente",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/Logo_No_LETRAS.jpg",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/Logo_No_LETRAS.jpg",
       "resizeMode": "contain",
-      "backgroundColor": "#0F172A"
+      "backgroundColor": "#F0F8FF"
     },
     "ios": {
       "supportsTablet": true,
@@ -25,8 +25,8 @@
     "android": {
       "package": "mx.costainteligente.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0F172A"
+        "foregroundImage": "./assets/images/Logo_No_LETRAS.jpg",
+        "backgroundColor": "#F0F8FF"
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
@@ -40,7 +40,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/Logo_No_LETRAS.jpg"
     },
     "plugins": [
       "expo-router",
