@@ -8,11 +8,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  ActivityIndicator, Dimensions,
+  ActivityIndicator, Dimensions, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '@/lib/constants';
@@ -47,13 +46,11 @@ const LEVELS = [
 function StepWelcome({ name, onNext }: { name: string; onNext: () => void }) {
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-      <LinearGradient
-        colors={['#0F172A', '#0F766E']}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={{ width: 100, height: 100, borderRadius: 99, alignItems: 'center', justifyContent: 'center', marginBottom: 28 }}
-      >
-        <MaterialIcons name="sailing" size={52} color="#fff" />
-      </LinearGradient>
+      <Image
+        source={require('@/assets/images/Logo_No_LETRAS.jpg')}
+        style={{ width: 140, height: 140, borderRadius: 24, marginBottom: 28 }}
+        resizeMode="contain"
+      />
 
       <Text style={{ fontSize: 28, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 10 }}>
         ¡Bienvenido, {name.split(' ')[0]}!

@@ -5,12 +5,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { signIn } from '@/lib/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
 import { COLORS } from '@/lib/constants';
@@ -84,21 +83,20 @@ export default function LoginScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 40 }}>
-          {/* Logo / hero */}
-          <LinearGradient
-            colors={['#0F172A', '#0F766E']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ borderRadius: 24, padding: 28, alignItems: 'center', marginBottom: 32 }}
-          >
-            <MaterialIcons name="sailing" size={52} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: 26, fontWeight: '800', marginTop: 12, letterSpacing: -0.5 }}>
+          {/* Logo principal */}
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <Image
+              source={require('@/assets/images/Logo_No_LETRAS.jpg')}
+              style={{ width: 180, height: 180, borderRadius: 24 }}
+              resizeMode="contain"
+            />
+            <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', marginTop: 12, letterSpacing: -0.5 }}>
               Costa Inteligente
             </Text>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', marginTop: 6, fontSize: 14 }}>
+            <Text style={{ color: '#64748B', marginTop: 4, fontSize: 14 }}>
               Zihuatanejo · Pesca y turismo
             </Text>
-          </LinearGradient>
+          </View>
 
           <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 20 }}>
             Iniciar sesión

@@ -133,7 +133,7 @@ function LeafletMap({ zones, filter, layer }: { zones: typeof SEED_ZONES; filter
         srcDoc={html}
         style={{ width: '100%', height: 400, border: 'none', borderRadius: 16 } as any}
         title="Mapa meteorológico y zonas de pesca"
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
       />
     );
   }
@@ -142,10 +142,14 @@ function LeafletMap({ zones, filter, layer }: { zones: typeof SEED_ZONES; filter
   return (
     <WebView
       source={{ html }}
-      style={{ height: 360, borderRadius: 16, overflow: 'hidden' }}
+      style={{ height: 380, borderRadius: 16, overflow: 'hidden' }}
       javaScriptEnabled
       domStorageEnabled
       scrollEnabled={false}
+      originWhitelist={['*']}
+      mixedContentMode="always"
+      allowsInlineMediaPlayback
+      mediaPlaybackRequiresUserAction={false}
     />
   );
 }
@@ -178,6 +182,7 @@ function ZoneDetailModal({
             <LeafletMap
               zones={SEED_ZONES.filter((z) => z.id === zone.id)}
               filter="todos"
+              layer="zones"
             />
           </View>
 
@@ -278,7 +283,7 @@ export default function MapScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Mapa real con capas meteorológicas */}
-        <View style={{ margin: 16, borderRadius: 16, overflow: 'hidden', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12 }}>
+        <View style={{ margin: 16, height: 380, borderRadius: 16, overflow: 'hidden', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12 }}>
           <LeafletMap zones={SEED_ZONES} filter={levelFilter} layer={activeLayer} />
         </View>
 
