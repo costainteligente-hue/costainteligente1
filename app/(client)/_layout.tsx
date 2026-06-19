@@ -72,6 +72,7 @@ export default function ClientLayout() {
       <Tabs.Screen name="reservations/index" options={{ href: null, title: 'Mis reservaciones' }} />
       <Tabs.Screen name="reservations/book/[serviceId]" options={{ href: null, title: 'Reservar' }} />
       <Tabs.Screen name="chat/[reservationId]" options={{ href: null, title: 'Chat' }} />
+      <Tabs.Screen name="normas-pesca" options={{ href: null, title: 'Normas de Pesca' }} />
     </Tabs>
   );
 }
