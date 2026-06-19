@@ -64,7 +64,7 @@ const MENU_SECTIONS = [
   {
     label: 'PERSONAS',
     items: [
-      { key: 'users',     label: 'Usuarios',    icon: 'people' as const,    route: '/(admin)/verification' },
+      { key: 'users',     label: 'Usuarios',    icon: 'people' as const,    route: '/(admin)/users' },
       { key: 'providers', label: 'Proveedores', icon: 'storefront' as const, route: '/(admin)/verification', badge: 'providers' },
     ],
   },
@@ -265,7 +265,7 @@ export default function AdminDashboard() {
 
       {/* Stat cards row 1 */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-        <StatCard icon="people" value={isLoading ? '—' : s.clients ?? 0} label="Usuarios registrados" sub="Usuarios y proveedores con cuenta" color={COLORS.ocean} />
+        <StatCard icon="people" value={isLoading ? '—' : s.clients ?? 0} label="Usuarios registrados" sub="Usuarios y proveedores con cuenta" color={COLORS.ocean} onPress={() => nav('/(admin)/users')} />
         <StatCard icon="storefront" value={isLoading ? '—' : s.providers ?? 0} label="Proveedores" sub={`${s.pendingVerification ?? 0} requieren revisión`} color={COLORS.success} onPress={() => nav('/(admin)/verification')} />
       </View>
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>

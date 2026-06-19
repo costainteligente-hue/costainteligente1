@@ -13,6 +13,7 @@ export default function AdminLayout() {
     >
       <Stack.Screen name="index" options={{ headerTitle: 'Panel de administración' }} />
       <Stack.Screen name="verification" options={{ headerTitle: 'Verificación de proveedores' }} />
+      <Stack.Screen name="users" options={{ headerTitle: 'Usuarios registrados' }} />
       <Stack.Screen name="zones" options={{ headerTitle: 'Zonas de pesca' }} />
       <Stack.Screen name="reports" options={{ headerTitle: 'Reportes' }} />
       <Stack.Screen name="alerts" options={{ headerTitle: 'Alertas' }} />
