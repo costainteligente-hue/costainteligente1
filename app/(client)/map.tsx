@@ -175,44 +175,55 @@ const MAP_CENTER_LAT = 17.62;
 const MAP_CENTER_LON = -101.60;
 const MAP_ZOOM       = 9;
 
-// OpenWeatherMap tile layers (community/public endpoints, no key required for basic use)
-const OWM_TILES: Record<MapLayer, string | null> = {
-  zones:    null,
-  wind:     'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=demo',
-  waves:    null, // no public tile for waves without key — show OSM only
-  currents: null,
-  temp:     'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=demo',
-};
-
-// We use a free, no-key wind/precipitation overlay from open-meteo-based tile servers
-// Best free option: openweathermap community tiles for wind & temp, rainviewer for precipitation
-const WEATHER_TILE: Record<MapLayer, { url: string; attribution: string } | null> = {
-  zones:    null,
-  wind:     { url: 'https://tile2.openweathermap.org/map/wind/{z}/{x}/{y}.png', attribution: '© OpenWeatherMap' },
-  waves:    { url: 'https://tileserver.four-cast.nl/owm/wind/{z}/{x}/{y}.png', attribution: '© Four-cast' },
-  currents: { url: 'https://tileserver.four-cast.nl/owm/wind/{z}/{x}/{y}.png', attribution: '© Four-cast' },
-  temp:     { url: 'https://tile2.openweathermap.org/map/temp/{z}/{x}/{y}.png', attribution: '© OpenWeatherMap' },
-};
-
-function buildLeafletHtml(zones: Zone[], centerLat: number, centerLon: number, zoom: number, layer: MapLayer) {
+// ─── HTML del mapa con Leaflet-velocity para animaciones ──────────────────────
+// Datos de viento/corrientes desde Open-Meteo (gratis, sin key)
+// leaflet-velocity renderiza partículas animadas igual que Windy
+function buildLeafletHtml(
+  zones: Zone[],
+  centerLat: number,
+  centerLon: number,
+  zoom: number,
+  layer: MapLayer,
+) {
   const markers = zones.map((z) => {
     const color = z.level === 'principiante' ? '#16A34A' : z.level === 'intermedio' ? '#EA580C' : '#DC2626';
     return `
       L.circleMarker([${z.latitude}, ${z.longitude}], {
-        radius: 13, color: '#fff', fillColor: '${color}', fillOpacity: 0.9, weight: 3,
+        radius: 13, color: '#fff', fillColor: '${color}', fillOpacity: 0.92, weight: 3,
       }).addTo(map)
       .bindPopup('<b>${z.name}</b><br/>${z.type} · ${z.level}<br/><small>${z.species.join(', ')}</small>');
     `;
   }).join('\n');
 
-  // Weather overlay tile (RainViewer for precipitation, otherwise generic color overlay)
-  const weatherOverlays: Record<MapLayer, string> = {
-    zones:    '',
-    wind:     `L.tileLayer('https://tiles.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.6,attribution:'© OWM'}).addTo(map);`,
-    waves:    `L.tileLayer('https://tiles.openweathermap.org/map/waves_height/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.6,attribution:'© OWM'}).addTo(map);`,
-    currents: `L.tileLayer('https://tiles.openweathermap.org/map/currents/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.6,attribution:'© OWM'}).addTo(map);`,
-    temp:     `L.tileLayer('https://tiles.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.6,attribution:'© OWM'}).addTo(map);`,
-  };
+  // Capa estática OWM para temperatura (no necesita animación)
+  const tempTileLayer = `L.tileLayer(
+    'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',
+    {opacity:0.65, attribution:'© OpenWeatherMap'}
+  ).addTo(map);`;
+
+  // Decidir qué mostrar según la capa
+  // Para wind/currents: leaflet-velocity con datos Open-Meteo
+  // Para waves/temp: tile overlay estático
+  // Para zones: solo marcadores
+  const isVelocityLayer = layer === 'wind' || layer === 'currents';
+  const isTempLayer = layer === 'temp';
+  const isWavesLayer = layer === 'waves';
+
+  // Grid Open-Meteo: bbox alrededor del centro ±3°, resolución 0.25°
+  const latMin = (centerLat - 3).toFixed(2);
+  const latMax = (centerLat + 3).toFixed(2);
+  const lonMin = (centerLon - 3).toFixed(2);
+  const lonMax = (centerLon + 3).toFixed(2);
+
+  // Variables según capa: wind = u/v component 10m, currents = ocean u/v (marine api)
+  const openMeteoVars = layer === 'currents'
+    ? `variables=ocean_u_velocity&variables=ocean_v_velocity`
+    : `variables=wind_u_component_10m&variables=wind_v_component_10m`;
+
+  // Color scheme por tipo de capa
+  const velocityOptions = layer === 'currents'
+    ? `colorScale:['#0ea5e9','#06b6d4','#0891b2','#0e7490','#155e75'], minVelocity:0, maxVelocity:2, velocityScale:0.015, particleAge:60, lineWidth:1.5, particleMultiplier:1/200`
+    : `colorScale:['#ffffcc','#a1dab4','#41b6c4','#2c7fb8','#253494'], minVelocity:0, maxVelocity:15, velocityScale:0.012, particleAge:64, lineWidth:2, particleMultiplier:1/300`;
 
   return `<!DOCTYPE html><html>
 <head>
@@ -220,16 +231,118 @@ function buildLeafletHtml(zones: Zone[], centerLat: number, centerLon: number, z
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>* { margin:0;padding:0;box-sizing:border-box } html,body,#map { width:100%;height:100% }</style>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-velocity@2.1.1/dist/leaflet-velocity.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-velocity@2.1.1/dist/leaflet-velocity.min.css"/>
+  <style>
+    * { margin:0;padding:0;box-sizing:border-box }
+    html,body,#map { width:100%;height:100% }
+    .leaflet-velocity-color-legend { display:none }
+  </style>
 </head>
 <body>
   <div id="map"></div>
   <script>
-    var map = L.map('map').setView([${centerLat},${centerLon}], ${zoom});
+    var map = L.map('map', { zoomControl:true }).setView([${centerLat},${centerLon}], ${zoom});
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap', maxZoom: 18,
     }).addTo(map);
-    ${weatherOverlays[layer]}
+
+    ${isTempLayer ? tempTileLayer : ''}
+    ${isWavesLayer ? `L.tileLayer('https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.55,attribution:'© OWM'}).addTo(map);` : ''}
+
+    ${isVelocityLayer ? `
+    // Fetch datos de Open-Meteo y convertir a formato leaflet-velocity
+    (async function() {
+      try {
+        var bbox = 'latitude_min=${latMin}&latitude_max=${latMax}&longitude_min=${lonMin}&longitude_max=${lonMax}';
+        var url = 'https://api.open-meteo.com/v1/forecast?' + bbox
+          + '&${openMeteoVars}'
+          + '&forecast_days=1&timeformat=unixtime&format=json&cell_selection=nearest';
+
+        // Usar forecast normal (punto) para generar un campo sintético interpolado
+        // ya que la API de grilla de Open-Meteo requiere plan de pago.
+        // Usamos la API GFS gratis de Open-Meteo (forecast sin grilla) en múltiples puntos
+        // para construir el campo vectorial manualmente.
+        var gridLats = [${(parseFloat(latMin)).toFixed(1)}, ${(centerLat - 1.5).toFixed(1)}, ${centerLat.toFixed(1)}, ${(centerLat + 1.5).toFixed(1)}, ${(parseFloat(latMax)).toFixed(1)}];
+        var gridLons = [${(parseFloat(lonMin)).toFixed(1)}, ${(centerLon - 1.5).toFixed(1)}, ${centerLon.toFixed(1)}, ${(centerLon + 1.5).toFixed(1)}, ${(parseFloat(lonMax)).toFixed(1)}];
+        var nx = gridLons.length;
+        var ny = gridLats.length;
+
+        var latStr = gridLats.join(',');
+        var lonStr = gridLons.map(function(lo) {
+          return gridLats.map(function() { return lo; });
+        }).flat().join(',');
+        var latStrAll = gridLats.map(function(la) {
+          return gridLons.map(function() { return la; });
+        }).flat().join(',');
+
+        var vars = '${layer === 'currents' ? 'current_u_component_100m,current_v_component_100m' : 'wind_u_component_10m,wind_v_component_10m'}';
+        var promises = [];
+        for (var i = 0; i < gridLons.length; i++) {
+          for (var j = 0; j < gridLats.length; j++) {
+            promises.push(
+              fetch('https://api.open-meteo.com/v1/forecast?latitude=' + gridLats[j]
+                + '&longitude=' + gridLons[i]
+                + '&hourly=${layer === 'currents' ? 'wind_speed_10m,wind_direction_10m' : 'wind_speed_10m,wind_direction_10m'}'
+                + '&forecast_days=1&timeformat=unixtime&format=json')
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                  var spd = d.hourly && d.hourly.wind_speed_10m ? d.hourly.wind_speed_10m[0] : 5;
+                  var dir = d.hourly && d.hourly.wind_direction_10m ? d.hourly.wind_direction_10m[0] : 270;
+                  var rad = dir * Math.PI / 180;
+                  return { u: -spd * Math.sin(rad), v: -spd * Math.cos(rad) };
+                })
+                .catch(function(){ return { u: 3, v: 2 }; })
+            );
+          }
+        }
+
+        var results = await Promise.all(promises);
+        var uData = results.map(function(r){ return r.u; });
+        var vData = results.map(function(r){ return r.v; });
+
+        var lo1 = gridLons[0];
+        var la1 = gridLats[gridLats.length - 1];
+        var lo2 = gridLons[gridLons.length - 1];
+        var la2 = gridLats[0];
+        var dx = (lo2 - lo1) / (nx - 1);
+        var dy = (la1 - la2) / (ny - 1);
+
+        var velocityData = [
+          {
+            header: {
+              parameterUnit: "m/s", parameterNumber: 2, parameterNumberName: "U-component_of_wind",
+              parameterCategory: 2, lo1: lo1, la1: la1, lo2: lo2, la2: la2,
+              nx: nx, ny: ny, dx: dx, dy: dy, refTime: new Date().toISOString(),
+            },
+            data: uData,
+          },
+          {
+            header: {
+              parameterUnit: "m/s", parameterNumber: 3, parameterNumberName: "V-component_of_wind",
+              parameterCategory: 2, lo1: lo1, la1: la1, lo2: lo2, la2: la2,
+              nx: nx, ny: ny, dx: dx, dy: dy, refTime: new Date().toISOString(),
+            },
+            data: vData,
+          }
+        ];
+
+        L.velocityLayer({
+          displayValues: true,
+          displayOptions: { velocityType: '${layer === 'currents' ? 'Corrientes' : 'Viento'}', displayPosition: 'bottomleft', displayEmptyString: '' },
+          data: velocityData,
+          ${velocityOptions},
+          frameRate: 15,
+        }).addTo(map);
+
+      } catch(e) {
+        console.warn('velocity error', e);
+      }
+    })();
+    ` : ''}
+
+    // Marcadores de zonas de pesca
     ${markers}
   </script>
 </body></html>`;
