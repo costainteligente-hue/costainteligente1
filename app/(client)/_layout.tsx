@@ -38,6 +38,14 @@ export default function ClientLayout() {
         }}
       />
       <Tabs.Screen
+        name="services/index"
+        options={{
+          title: 'Servicios',
+          tabBarLabel: 'Servicios',
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="storefront" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="seasons"
         options={{
           title: 'Temporadas',
@@ -67,7 +75,6 @@ export default function ClientLayout() {
       <Tabs.Screen name="zones/[id]" options={{ href: null, title: 'Zona de pesca' }} />
       <Tabs.Screen name="equipment" options={{ href: null, title: 'Equipo' }} />
       <Tabs.Screen name="tutorials" options={{ href: null, title: 'Tutoriales' }} />
-      <Tabs.Screen name="services/index" options={{ href: null, title: 'Servicios' }} />
       <Tabs.Screen name="services/[id]" options={{ href: null, title: 'Detalle de servicio' }} />
       <Tabs.Screen name="reservations/index" options={{ href: null, title: 'Mis reservaciones' }} />
       <Tabs.Screen name="reservations/book/[serviceId]" options={{ href: null, title: 'Reservar' }} />
