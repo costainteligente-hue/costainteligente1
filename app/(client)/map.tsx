@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Modal, Platform,
+  Dimensions, LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -32,38 +33,59 @@ const LEVEL_EMOJI: Record<string, string> = {
 
 type MapLayer = 'wind' | 'waves' | 'currents' | 'temp' | 'zones';
 
-// ─── Windy embed + marcadores Leaflet superpuestos ────────────────────────────
-function buildMapHtml(zones: typeof SEED_ZONES, filter: Level, layer: MapLayer) {
-  const filtered = zones.filter((z) => filter === 'todos' || z.level === filter);
+// ─── Parámetros del mapa centrado en Zihuatanejo ──────────────────────────────
+// zoom=9: cubre aprox ±0.2° lat/lon en pantalla de ~380px
+const MAP_CENTER_LAT  = 17.62;
+const MAP_CENTER_LON  = -101.60;
+const MAP_ZOOM        = 9;
+// tiles 256px, escala: a zoom 9, 1 tile = 360/512 grados ≈ 0.703°/tile
+// pixels por grado a zoom 9 = 256 * 2^9 / 360 ≈ 364 px/°
+const PX_PER_DEG_LAT  = 364;
+const PX_PER_DEG_LON  = 364;
 
-  // Parámetro de capa de Windy
-  const windyOverlay: Record<MapLayer, string> = {
-    wind:     'wind',
-    waves:    'waves',
-    currents: 'currents',
-    temp:     'sst',     // sea surface temperature
-    zones:    'wind',    // default cuando se muestran zonas
-  };
-  const overlay = windyOverlay[layer];
+/** Convierte coordenadas geográficas a posición px relativa al centro del mapa */
+function latLonToPixel(
+  lat: number, lon: number,
+  mapW: number, mapH: number,
+): { x: number; y: number } {
+  const dx = (lon - MAP_CENTER_LON) * PX_PER_DEG_LON;
+  const dy = (MAP_CENTER_LAT - lat) * PX_PER_DEG_LAT;
+  return { x: mapW / 2 + dx, y: mapH / 2 + dy };
+}
 
-  const markers = filtered.map((z) => {
+// ─── Windy embed URL directa (sin iframe anidado) ────────────────────────────
+const WINDY_OVERLAY: Record<MapLayer, string> = {
+  wind:     'wind',
+  waves:    'waves',
+  currents: 'currents',
+  temp:     'sst',
+  zones:    'wind',
+};
+
+function buildWindyUrl(layer: MapLayer) {
+  const overlay = WINDY_OVERLAY[layer];
+  return (
+    `https://embed.windy.com/embed2.html` +
+    `?lat=${MAP_CENTER_LAT}&lon=${MAP_CENTER_LON}` +
+    `&detailLat=${MAP_CENTER_LAT}&detailLon=${MAP_CENTER_LON}` +
+    `&zoom=${MAP_ZOOM}&level=surface&overlay=${overlay}` +
+    `&product=ecmwf&menu=&message=&marker=&calendar=now` +
+    `&pressure=&type=map&location=coordinates&detail=` +
+    `&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1`
+  );
+}
+
+// ─── HTML autónomo con OpenStreetMap + Leaflet (fallback para cuando Windy no carga) ─
+function buildLeafletHtml(zones: typeof SEED_ZONES, layer: MapLayer) {
+  const overlay = WINDY_OVERLAY[layer];
+  const markers = zones.map((z) => {
     const color = z.level === 'principiante' ? '#16A34A' : z.level === 'intermedio' ? '#EA580C' : '#DC2626';
     return `
       L.circleMarker([${z.latitude}, ${z.longitude}], {
-        radius: 16, color: '#fff', fillColor: '${color}',
+        radius: 14, color: '#fff', fillColor: '${color}',
         fillOpacity: 0.9, weight: 3,
-      })
-      .addTo(map)
-      .bindPopup(\`
-        <div style="font-family:sans-serif;min-width:190px;padding:4px">
-          <b style="font-size:14px;color:#0F172A">${z.name}</b><br/>
-          <span style="color:#64748B;font-size:12px">${z.type} · ${z.level}</span><br/>
-          <div style="margin-top:6px;font-size:12px;color:#374151">${z.description}</div>
-          <div style="margin-top:8px;font-size:12px;color:${color};font-weight:700">
-            🐟 ${z.species.join(' · ')}
-          </div>
-        </div>
-      \`, { maxWidth: 230 });
+      }).addTo(map)
+      .bindPopup('<b>${z.name}</b><br/>${z.type} · ${z.level}<br/><small>${z.species.join(', ')}</small>');
     `;
   }).join('\n');
 
@@ -71,86 +93,94 @@ function buildMapHtml(zones: typeof SEED_ZONES, filter: Level, layer: MapLayer) 
 <html>
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { margin:0;padding:0;box-sizing:border-box }
-    html,body { width:100%;height:100% }
-    #windy { position:absolute;inset:0 }
-    #overlay-map { position:absolute;inset:0;z-index:10;pointer-events:none }
-    #overlay-map .leaflet-interactive { pointer-events:all }
-    .leaflet-popup-content-wrapper { border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15) }
-    .leaflet-control-zoom { display:none }
+    html,body,#map { width:100%;height:100% }
   </style>
 </head>
 <body>
-  <!-- Windy iframe como fondo -->
-  <iframe
-    id="windy"
-    src="https://embed.windy.com/embed2.html?lat=17.64&lon=-101.55&detailLat=17.64&detailLon=-101.55&width=100%25&height=100%25&zoom=9&level=surface&overlay=${overlay}&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1"
-    frameborder="0"
-    style="width:100%;height:100%;border:none"
-    allowfullscreen
-  ></iframe>
-
-  <!-- Mapa Leaflet transparente encima para los marcadores -->
-  <div id="overlay-map"></div>
-
+  <div id="map"></div>
   <script>
-    // Esperar a que cargue el iframe antes de renderizar el mapa
-    window.addEventListener('load', function() {
-      var map = L.map('overlay-map', {
-        zoomControl: false,
-        attributionControl: false,
-        dragging: false,
-        scrollWheelZoom: false,
-        doubleClickZoom: false,
-        touchZoom: false,
-        boxZoom: false,
-        keyboard: false,
-      }).setView([17.64, -101.55], 9);
-
-      // Tile transparente (solo para que Leaflet tenga un mapa de referencia)
-      L.tileLayer('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', {
-        opacity: 0, maxZoom: 18,
-      }).addTo(map);
-
-      ${markers}
-    });
+    var map = L.map('map', { zoomControl:true }).setView([${MAP_CENTER_LAT},${MAP_CENTER_LON}], ${MAP_ZOOM});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 18,
+    }).addTo(map);
+    ${markers}
   </script>
 </body>
 </html>`;
 }
 
 // ─── Componente del mapa ──────────────────────────────────────────────────────
-function LeafletMap({ zones, filter, layer }: { zones: typeof SEED_ZONES; filter: Level; layer: MapLayer }) {
-  const html = buildMapHtml(zones, filter, layer);
+function WindyMap({
+  zones, filter, layer,
+  height = 380,
+  showMarkers = true,
+}: {
+  zones: typeof SEED_ZONES;
+  filter: Level;
+  layer: MapLayer;
+  height?: number;
+  showMarkers?: boolean;
+}) {
+  const [mapSize, setMapSize] = useState({ w: Dimensions.get('window').width - 32, h: height });
+  const filtered = zones.filter((z) => filter === 'todos' || z.level === filter);
 
+  const onLayout = (e: LayoutChangeEvent) => {
+    const { width, height: h } = e.nativeEvent.layout;
+    setMapSize({ w: width, h });
+  };
+
+  // Web: iframe directo a Windy
   if (Platform.OS === 'web') {
     return (
-      <iframe
-        srcDoc={html}
-        style={{ width: '100%', height: 400, border: 'none', borderRadius: 16 } as any}
-        title="Mapa meteorológico y zonas de pesca"
-        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-      />
+      <View style={{ height, position: 'relative' }} onLayout={onLayout}>
+        <iframe
+          src={buildWindyUrl(layer)}
+          style={{ width: '100%', height: '100%', border: 'none' } as any}
+          title="Mapa meteorológico"
+          allowFullScreen
+        />
+        {/* Marcadores SVG superpuestos en web */}
+        <svg
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' } as any}
+        >
+          {showMarkers && filtered.map((z) => {
+            const { x, y } = latLonToPixel(z.latitude, z.longitude, mapSize.w, mapSize.h);
+            const color = LEVEL_COLORS[z.level];
+            return (
+              <g key={z.id}>
+                <circle cx={x} cy={y} r={12} fill={color} stroke="#fff" strokeWidth={2.5} opacity={0.92} />
+              </g>
+            );
+          })}
+        </svg>
+      </View>
     );
   }
 
+  // Native: WebView con HTML de Leaflet + OpenStreetMap (100% autónomo, sin iframes)
   const { WebView } = require('react-native-webview');
+  const html = buildLeafletHtml(filtered, layer);
+
   return (
-    <WebView
-      source={{ html }}
-      style={{ height: 380, borderRadius: 16, overflow: 'hidden' }}
-      javaScriptEnabled
-      domStorageEnabled
-      scrollEnabled={false}
-      originWhitelist={['*']}
-      mixedContentMode="always"
-      allowsInlineMediaPlayback
-      mediaPlaybackRequiresUserAction={false}
-    />
+    <View style={{ height }} onLayout={onLayout}>
+      <WebView
+        source={{ html }}
+        style={{ flex: 1 }}
+        javaScriptEnabled
+        domStorageEnabled
+        originWhitelist={['*']}
+        mixedContentMode="always"
+        scrollEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
   );
 }
 
@@ -178,11 +208,12 @@ function ZoneDetailModal({
         </View>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           {/* Mini mapa de la zona */}
-          <View style={{ height: 200, borderRadius: 16, overflow: 'hidden', marginBottom: 14 }}>
-            <LeafletMap
+          <View style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 14 }}>
+            <WindyMap
               zones={SEED_ZONES.filter((z) => z.id === zone.id)}
               filter="todos"
               layer="zones"
+              height={200}
             />
           </View>
 
@@ -253,10 +284,10 @@ function ZoneDetailModal({
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function MapScreen() {
-  const [levelFilter, setLevelFilter] = useState<Level>('todos');
-  const [selectedZone, setSelectedZone]   = useState<typeof SEED_ZONES[0] | null>(null);
-  const [favorites, setFavorites]         = useState<Set<string>>(new Set());
-  const [activeLayer, setActiveLayer]     = useState<MapLayer>('wind');
+  const [levelFilter, setLevelFilter]   = useState<Level>('todos');
+  const [selectedZone, setSelectedZone] = useState<typeof SEED_ZONES[0] | null>(null);
+  const [favorites, setFavorites]       = useState<Set<string>>(new Set());
+  const [activeLayer, setActiveLayer]   = useState<MapLayer>('wind');
 
   const filtered = SEED_ZONES.filter((z) => levelFilter === 'todos' || z.level === levelFilter);
 
@@ -264,7 +295,7 @@ export default function MapScreen() {
     setFavorites((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const levels: { key: Level; label: string }[] = [
-    { key: 'todos', label: 'Todos' },
+    { key: 'todos',        label: 'Todos' },
     { key: 'principiante', label: '🟢 Principiante' },
     { key: 'intermedio',   label: '🟡 Intermedio' },
     { key: 'avanzado',     label: '🔴 Avanzado' },
@@ -282,19 +313,23 @@ export default function MapScreen() {
       )}
 
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        {/* Mapa real con capas meteorológicas */}
-        <View style={{ margin: 16, height: 380, borderRadius: 16, overflow: 'hidden', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12 }}>
-          <LeafletMap zones={SEED_ZONES} filter={levelFilter} layer={activeLayer} />
+        {/* Mapa principal */}
+        <View style={{
+          margin: 16, borderRadius: 16, overflow: 'hidden',
+          elevation: 4, shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12,
+        }}>
+          <WindyMap zones={SEED_ZONES} filter={levelFilter} layer={activeLayer} height={400} />
         </View>
 
         {/* Selector de capas meteorológicas */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 12 }}>
           {([
-            { id: 'wind',     label: '💨 Viento',        color: COLORS.info },
-            { id: 'waves',    label: '🌊 Olas',          color: COLORS.ocean },
-            { id: 'currents', label: '🔄 Corrientes',    color: COLORS.purple },
-            { id: 'temp',     label: '🌡 Temp. mar',     color: COLORS.danger },
-            { id: 'zones',    label: '📍 Solo zonas',    color: COLORS.success },
+            { id: 'wind',     label: '💨 Viento',     color: COLORS.info },
+            { id: 'waves',    label: '🌊 Olas',       color: COLORS.ocean },
+            { id: 'currents', label: '🔄 Corrientes', color: COLORS.purple },
+            { id: 'temp',     label: '🌡 Temp. mar',  color: COLORS.danger },
+            { id: 'zones',    label: '📍 Solo zonas', color: COLORS.success },
           ] as { id: MapLayer; label: string; color: string }[]).map((l) => (
             <TouchableOpacity
               key={l.id}
@@ -322,7 +357,7 @@ export default function MapScreen() {
           ))}
         </View>
 
-        {/* Filtros */}
+        {/* Filtros de nivel */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 14 }}>
           {levels.map((l) => (
             <TouchableOpacity
