@@ -40,7 +40,21 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/Logo_No_LETRAS.jpg"
+      "favicon": "./assets/images/Logoapp.jpg",
+      "name": "Costa Inteligente",
+      "shortName": "Costa",
+      "description": "Zonas de pesca, servicios y guías turísticas de Zihuatanejo-Ixtapa.",
+      "lang": "es",
+      "scope": "/",
+      "themeColor": "#0F766E",
+      "backgroundColor": "#F0F8FF",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "icon": {
+        "any": "./assets/images/Logoapp.jpg",
+        "transparent": "./assets/images/Logoapp.jpg"
+      }
     },
     "plugins": [
       "expo-router",
