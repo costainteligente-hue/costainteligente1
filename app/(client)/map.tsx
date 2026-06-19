@@ -107,7 +107,7 @@ const ALL_ZONES = [
 
 type Zone = typeof ALL_ZONES[0];
 type Level = 'todos' | 'principiante' | 'intermedio' | 'avanzado';
-type MapLayer = 'wind' | 'waves' | 'currents' | 'temp' | 'zones';
+type MapLayer = 'zones' | 'wind' | 'waves' | 'currents' | 'temp';
 
 const LEVEL_COLORS: Record<string, string> = {
   principiante: COLORS.success,
@@ -175,7 +175,26 @@ const MAP_CENTER_LAT = 17.62;
 const MAP_CENTER_LON = -101.60;
 const MAP_ZOOM       = 9;
 
-function buildLeafletHtml(zones: Zone[], centerLat: number, centerLon: number, zoom: number) {
+// OpenWeatherMap tile layers (community/public endpoints, no key required for basic use)
+const OWM_TILES: Record<MapLayer, string | null> = {
+  zones:    null,
+  wind:     'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=demo',
+  waves:    null, // no public tile for waves without key — show OSM only
+  currents: null,
+  temp:     'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=demo',
+};
+
+// We use a free, no-key wind/precipitation overlay from open-meteo-based tile servers
+// Best free option: openweathermap community tiles for wind & temp, rainviewer for precipitation
+const WEATHER_TILE: Record<MapLayer, { url: string; attribution: string } | null> = {
+  zones:    null,
+  wind:     { url: 'https://tile2.openweathermap.org/map/wind/{z}/{x}/{y}.png', attribution: '© OpenWeatherMap' },
+  waves:    { url: 'https://tileserver.four-cast.nl/owm/wind/{z}/{x}/{y}.png', attribution: '© Four-cast' },
+  currents: { url: 'https://tileserver.four-cast.nl/owm/wind/{z}/{x}/{y}.png', attribution: '© Four-cast' },
+  temp:     { url: 'https://tile2.openweathermap.org/map/temp/{z}/{x}/{y}.png', attribution: '© OpenWeatherMap' },
+};
+
+function buildLeafletHtml(zones: Zone[], centerLat: number, centerLon: number, zoom: number, layer: MapLayer) {
   const markers = zones.map((z) => {
     const color = z.level === 'principiante' ? '#16A34A' : z.level === 'intermedio' ? '#EA580C' : '#DC2626';
     return `
@@ -185,6 +204,15 @@ function buildLeafletHtml(zones: Zone[], centerLat: number, centerLon: number, z
       .bindPopup('<b>${z.name}</b><br/>${z.type} · ${z.level}<br/><small>${z.species.join(', ')}</small>');
     `;
   }).join('\n');
+
+  // Weather overlay tile (RainViewer for precipitation, otherwise generic color overlay)
+  const weatherOverlays: Record<MapLayer, string> = {
+    zones:    '',
+    wind:     `L.tileLayer('https://tiles.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.6,attribution:'© OWM'}).addTo(map);`,
+    waves:    `L.tileLayer('https://tiles.openweathermap.org/map/waves_height/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.6,attribution:'© OWM'}).addTo(map);`,
+    currents: `L.tileLayer('https://tiles.openweathermap.org/map/currents/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.6,attribution:'© OWM'}).addTo(map);`,
+    temp:     `L.tileLayer('https://tiles.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.6,attribution:'© OWM'}).addTo(map);`,
+  };
 
   return `<!DOCTYPE html><html>
 <head>
@@ -201,16 +229,17 @@ function buildLeafletHtml(zones: Zone[], centerLat: number, centerLon: number, z
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap', maxZoom: 18,
     }).addTo(map);
+    ${weatherOverlays[layer]}
     ${markers}
   </script>
 </body></html>`;
 }
 
 // ─── Componente del mapa ──────────────────────────────────────────────────────
-function ZoneMap({ zones, centerLat, centerLon, zoom = MAP_ZOOM, height = 380 }: {
-  zones: Zone[]; centerLat: number; centerLon: number; zoom?: number; height?: number;
+function ZoneMap({ zones, centerLat, centerLon, zoom = MAP_ZOOM, height = 380, layer = 'zones' }: {
+  zones: Zone[]; centerLat: number; centerLon: number; zoom?: number; height?: number; layer?: MapLayer;
 }) {
-  const html = buildLeafletHtml(zones, centerLat, centerLon, zoom);
+  const html = buildLeafletHtml(zones, centerLat, centerLon, zoom, layer);
   if (Platform.OS === 'web') {
     return (
       <iframe
@@ -419,11 +448,12 @@ function LocationBanner({ status, onRequest }: { status: 'idle' | 'loading' | 'g
 
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 export default function MapScreen() {
-  const [levelFilter, setLevelFilter]     = useState<Level>('todos');
-  const [selectedZone, setSelectedZone]   = useState<Zone | null>(null);
-  const [favorites, setFavorites]         = useState<Set<string>>(new Set());
-  const [userLocation, setUserLocation]   = useState<{ lat: number; lon: number } | null>(null);
+  const [levelFilter, setLevelFilter]       = useState<Level>('todos');
+  const [selectedZone, setSelectedZone]     = useState<Zone | null>(null);
+  const [favorites, setFavorites]           = useState<Set<string>>(new Set());
+  const [userLocation, setUserLocation]     = useState<{ lat: number; lon: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
+  const [activeLayer, setActiveLayer]       = useState<MapLayer>('zones');
 
   const toggleFavorite = (id: string) =>
     setFavorites((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -500,15 +530,41 @@ export default function MapScreen() {
         <LocationBanner status={locationStatus} onRequest={requestLocation} />
 
         {/* Mapa con todas las zonas filtradas */}
-        <View style={{ marginHorizontal: 16, borderRadius: 16, overflow: 'hidden', marginBottom: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12 }}>
+        <View style={{ marginHorizontal: 16, borderRadius: 16, overflow: 'hidden', marginBottom: 12, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12 }}>
           <ZoneMap
             zones={filtered}
             centerLat={mapCenterLat}
             centerLon={mapCenterLon}
             zoom={userLocation ? 10 : MAP_ZOOM}
             height={380}
+            layer={activeLayer}
           />
         </View>
+
+        {/* Selector de capas meteorológicas */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 12 }}>
+          {([
+            { id: 'zones',    label: '📍 Zonas',       color: COLORS.success },
+            { id: 'wind',     label: '💨 Viento',       color: COLORS.info },
+            { id: 'waves',    label: '🌊 Olas',         color: COLORS.ocean },
+            { id: 'currents', label: '🔄 Corrientes',   color: COLORS.purple ?? '#7C3AED' },
+            { id: 'temp',     label: '🌡 Temp. mar',    color: COLORS.danger },
+          ] as { id: MapLayer; label: string; color: string }[]).map((l) => (
+            <TouchableOpacity
+              key={l.id}
+              onPress={() => setActiveLayer(l.id)}
+              style={{
+                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+                backgroundColor: activeLayer === l.id ? l.color : '#fff',
+                borderWidth: 1.5, borderColor: activeLayer === l.id ? l.color : '#E2E8F0',
+              }}
+            >
+              <Text style={{ fontWeight: '700', color: activeLayer === l.id ? '#fff' : '#0F172A', fontSize: 13 }}>
+                {l.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         {/* Filtros de nivel */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 14 }}>
