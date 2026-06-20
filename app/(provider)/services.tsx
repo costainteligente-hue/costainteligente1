@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ScrollView, View, Text, TouchableOpacity, Alert, Modal,
   TextInput, KeyboardAvoidingView, Platform, FlatList,
@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useProviderStore } from '@/stores/providerStore';
+import { useAuthStore } from '@/stores/authStore';
 import { SERVICE_DEFS, COLORS, formatCurrency, getServiceDef } from '@/lib/constants';
 import { BusinessRecord, ServiceModuleId, ScheduleSlot, CatalogItem, ServiceRouteOption } from '@/types';
 import { CardBox } from '@/components/ui/CardBox';
@@ -17,13 +18,42 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { InfoBox } from '@/components/ui/InfoBox';
 import { InfoChip } from '@/components/ui/InfoChip';
 
+const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? '';
+
+async function fetchApprovalStatus(userId: string): Promise<boolean> {
+  try {
+    if (typeof window !== 'undefined') {
+      const res  = await fetch(`${API_BASE}/api/auth/provider-status?userId=${userId}`);
+      const data = await res.json();
+      return data.status === 'approved';
+    }
+    const { getDb }     = await import('@/lib/db/client');
+    const { providers } = await import('@/lib/db/schema');
+    const { eq }        = await import('drizzle-orm');
+    const rows = await getDb().select({ status: providers.status }).from(providers).where(eq(providers.userId, userId));
+    return rows[0]?.status === 'approved';
+  } catch { return false; }
+}
+
+function useIsApproved() {
+  const { user } = useAuthStore();
+  const [approved, setApproved] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchApprovalStatus(user.id).then(setApproved);
+  }, [user?.id]);
+  return approved;
+}
+
 // ─── Service Registry List ───────────────────────────────────────────────────
 function ServiceRegistryList({
   serviceId,
   onBack,
+  isApproved = true,
 }: {
   serviceId: ServiceModuleId;
   onBack: () => void;
+  isApproved?: boolean;
 }) {
   const { records, deleteRecord, updateRecord, addRecord, confirmBeforeDelete } = useProviderStore();
   const def = getServiceDef(serviceId);
@@ -118,20 +148,31 @@ function ServiceRegistryList({
       <SectionHeader
         title="Registros"
         subtitle="Administra registros verificados."
-        actionLabel={addLabel()}
+        actionLabel={isApproved ? addLabel() : undefined}
         actionIcon="add"
-        onAction={() => setShowForm(true)}
+        onAction={isApproved ? () => setShowForm(true) : undefined}
         actionColor={def.color}
       />
       <View style={{ height: 10 }} />
+
+      {!isApproved && (
+        <View style={{ backgroundColor: `${COLORS.warning}12`, borderRadius: 14, borderWidth: 1, borderColor: `${COLORS.warning}35`, padding: 14, marginBottom: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+          <MaterialIcons name="lock" size={18} color={COLORS.warning} style={{ marginTop: 1 }} />
+          <Text style={{ flex: 1, color: '#64748B', fontSize: 13, lineHeight: 18 }}>
+            Tu cuenta está pendiente de aprobación. No puedes agregar ni publicar servicios hasta que un administrador la apruebe.
+          </Text>
+        </View>
+      )}
 
       {list.length === 0 ? (
         <EmptyState
           icon={def.icon as any}
           title="Sin registros"
-          message="Agrega un registro para capturar la información del servicio."
-          buttonLabel={addLabel()}
-          onPress={() => setShowForm(true)}
+          message={isApproved
+            ? "Agrega un registro para capturar la información del servicio."
+            : "Podrás agregar registros una vez que tu cuenta sea aprobada."}
+          buttonLabel={isApproved ? addLabel() : undefined}
+          onPress={isApproved ? () => setShowForm(true) : undefined}
         />
       ) : (
         list.map((record) => (
@@ -161,28 +202,25 @@ function ServiceRegistryList({
                 </View>
               </View>
             </View>
-            <View
-              style={{ height: 1, backgroundColor: '#E2E8F0', marginVertical: 12 }}
-            />
-            <View className="flex-row flex-wrap gap-2 justify-end">
+            <View style={{ height: 1, backgroundColor: '#E2E8F0', marginVertical: 12 }} />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' }}>
               <TouchableOpacity
-                onPress={() => { setEditTarget(record); setShowForm(true); }}
-                className="flex-row items-center gap-1.5 px-3 py-2 rounded-xl border border-line"
+                onPress={isApproved ? () => { setEditTarget(record); setShowForm(true); } : undefined}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', opacity: isApproved ? 1 : 0.4 }}
               >
                 <MaterialIcons name="edit" size={16} color="#0F172A" />
                 <Text style={{ fontWeight: '800', fontSize: 13 }}>Modificar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleDelete(record)}
-                className="flex-row items-center gap-1.5 px-3 py-2 rounded-xl border border-line"
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}
               >
                 <MaterialIcons name="delete-outline" size={16} color={COLORS.danger} />
                 <Text style={{ color: COLORS.danger, fontWeight: '800', fontSize: 13 }}>Eliminar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => setAdminTarget(record)}
-                className="flex-row items-center gap-1.5 px-4 py-2 rounded-xl"
-                style={{ backgroundColor: def.color }}
+                onPress={isApproved ? () => setAdminTarget(record) : undefined}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, backgroundColor: isApproved ? def.color : '#94A3B8' }}
               >
                 <MaterialIcons name="dashboard-customize" size={16} color="#fff" />
                 <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>Administrar</Text>
@@ -578,8 +616,22 @@ function ConfigureServices({
 export default function ServicesScreen() {
   const [view, setView] = useState<'list' | 'configure' | ServiceModuleId>('list');
   const { selectedServices, records } = useProviderStore();
+  const isApproved = useIsApproved();
 
   const enabledDefs = SERVICE_DEFS.filter((s) => selectedServices.has(s.id));
+
+  // Banner de cuenta pendiente
+  const PendingBanner = () => (
+    <View style={{ backgroundColor: `${COLORS.warning}12`, borderRadius: 14, borderWidth: 1, borderColor: `${COLORS.warning}35`, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+      <MaterialIcons name="hourglass-bottom" size={20} color={COLORS.warning} style={{ marginTop: 1 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 13, marginBottom: 3 }}>Cuenta pendiente de aprobación</Text>
+        <Text style={{ color: '#64748B', fontSize: 12, lineHeight: 18 }}>
+          Podrás publicar y gestionar servicios una vez que el administrador apruebe tu cuenta.
+        </Text>
+      </View>
+    </View>
+  );
 
   if (view === 'configure') {
     return (
@@ -595,6 +647,7 @@ export default function ServicesScreen() {
         <ServiceRegistryList
           serviceId={view as ServiceModuleId}
           onBack={() => setView('list')}
+          isApproved={isApproved === true}
         />
       </SafeAreaView>
     );
@@ -612,6 +665,8 @@ export default function ServicesScreen() {
         />
         <View style={{ height: 12 }} />
 
+        {isApproved === false && <PendingBanner />}
+
         {enabledDefs.length === 0 ? (
           <EmptyState
             icon="storefront"
@@ -626,25 +681,19 @@ export default function ServicesScreen() {
             return (
               <TouchableOpacity key={def.id} onPress={() => setView(def.id as ServiceModuleId)}>
                 <CardBox>
-                  <View className="flex-row items-center gap-3">
-                    <View
-                      style={{
-                        width: 54,
-                        height: 54,
-                        borderRadius: 18,
-                        backgroundColor: `${def.color}20`,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={{ width: 54, height: 54, borderRadius: 18, backgroundColor: `${def.color}20`, alignItems: 'center', justifyContent: 'center' }}>
                       <MaterialIcons name={def.icon as any} size={28} color={def.color} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontWeight: '800', color: '#0F172A' }}>{def.name}</Text>
-                      <Text style={{ color: '#0F172A99', fontSize: 13 }}>
+                      <Text style={{ color: '#64748B', fontSize: 13 }}>
                         {count === 0 ? 'Sin registros' : `${count} registro${count > 1 ? 's' : ''} activo${count > 1 ? 's' : ''}`}
                       </Text>
                     </View>
+                    {isApproved === false && (
+                      <MaterialIcons name="lock" size={18} color={COLORS.warning} />
+                    )}
                     <MaterialIcons name="chevron-right" size={24} color="#94A3B8" />
                   </View>
                 </CardBox>

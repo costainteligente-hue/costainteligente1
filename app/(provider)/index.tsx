@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProviderStore } from '@/stores/providerStore';
+import { useAuthStore } from '@/stores/authStore';
 import { SERVICE_DEFS, COLORS, formatCurrency } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -207,7 +208,31 @@ function ServiceSummaryRow({
 export default function ProviderDashboard() {
   const router = useRouter();
   const { selectedServices, records } = useProviderStore();
+  const { user } = useAuthStore();
+  const [approvalStatus, setApprovalStatus] = useState<'checking' | 'approved' | 'pending'>('checking');
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? '';
+    const check = async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const res = await fetch(`${API_BASE}/api/auth/provider-status?userId=${user.id}`);
+          const data = await res.json();
+          setApprovalStatus(data.status === 'approved' ? 'approved' : 'pending');
+        } else {
+          const { getDb } = await import('@/lib/db/client');
+          const { providers } = await import('@/lib/db/schema');
+          const { eq } = await import('drizzle-orm');
+          const rows = await getDb().select({ status: providers.status }).from(providers).where(eq(providers.userId, user.id!));
+          setApprovalStatus(rows[0]?.status === 'approved' ? 'approved' : 'pending');
+        }
+      } catch { setApprovalStatus('pending'); }
+    };
+    check();
+  }, [user?.id]);
+
+  const isApproved = approvalStatus === 'approved';
   const enabledDefs = SERVICE_DEFS.filter((s) => selectedServices.has(s.id));
   const totalRecords = Object.values(records).reduce((sum, list) => sum + list.length, 0);
 
@@ -223,7 +248,20 @@ export default function ProviderDashboard() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <HeroPanel />
 
-        {/* Metrics grid */}
+        {/* Banner de cuenta pendiente */}
+        {!isApproved && approvalStatus !== 'checking' && (
+          <View style={{ backgroundColor: `${COLORS.warning}12`, borderRadius: 16, borderWidth: 1, borderColor: `${COLORS.warning}35`, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+            <MaterialIcons name="hourglass-bottom" size={22} color={COLORS.warning} style={{ marginTop: 1 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 14, marginBottom: 4 }}>
+                Cuenta pendiente de aprobación
+              </Text>
+              <Text style={{ color: '#64748B', fontSize: 13, lineHeight: 19 }}>
+                Puedes explorar el panel, pero no podrás publicar servicios ni recibir reservas hasta que un administrador apruebe tu cuenta (24-48 hrs).
+              </Text>
+            </View>
+          </View>
+        )}
         {[0, 2].map((start) => (
           <View key={start} style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
             {metrics.slice(start, start + 2).map((m) => (
