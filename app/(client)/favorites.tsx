@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,10 +6,11 @@ import { COLORS } from '@/lib/constants';
 import { HeaderCard } from '@/components/ui/HeaderCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useRouter } from 'expo-router';
+import { ZONE_ID_TO_PHOTO } from '@/lib/zone-photos';
 
 const SEED_FAVORITES = [
-  { id: 'z1', name: 'Bajo de Chila', level: 'intermedio', type: 'Offshore', species: ['Pez vela', 'Marlín azul'], savedAt: '10/07/2026', wikimedia: 'Zihuatanejo' },
-  { id: 'z4', name: 'Bahía de Zihuatanejo', level: 'principiante', type: 'Bahía', species: ['Huachinango', 'Robalo'], savedAt: '05/07/2026', wikimedia: 'Bahía_de_Zihuatanejo' },
+  { id: 'z2', name: 'Playa La Ropa',          level: 'principiante', type: 'Playa',    species: ['Jurel', 'Sierra'],           savedAt: '10/07/2026' },
+  { id: 'z4', name: 'Bahía de Zihuatanejo',   level: 'principiante', type: 'Bahía',    species: ['Huachinango', 'Robalo'],     savedAt: '05/07/2026' },
 ];
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -18,34 +19,14 @@ const LEVEL_COLORS: Record<string, string> = {
   avanzado: COLORS.danger,
 };
 
-// Wikimedia photo hook
-const wikiCache: Record<string, string | null> = {};
-function useWikiPhoto(term: string) {
-  const [photo, setPhoto] = useState<string | null>(null);
-  useEffect(() => {
-    if (term in wikiCache) { setPhoto(wikiCache[term]); return; }
-    fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(term)}&prop=pageimages&format=json&pithumbsize=500&origin=*`)
-      .then((r) => r.json())
-      .then((data) => {
-        const page = Object.values(data?.query?.pages ?? {})[0] as any;
-        const url  = page?.thumbnail?.source ?? null;
-        wikiCache[term] = url;
-        setPhoto(url);
-      })
-      .catch(() => { wikiCache[term] = null; });
-  }, [term]);
-  return photo;
-}
-
 function FavoriteCard({ zone, onRemove }: { zone: typeof SEED_FAVORITES[0]; onRemove: () => void }) {
-  const photo = useWikiPhoto(zone.wikimedia);
+  const photo = ZONE_ID_TO_PHOTO[zone.id] ?? null;
   const color = LEVEL_COLORS[zone.level];
   return (
     <View style={{ backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 2 }}>
-      {/* Foto */}
       <View style={{ height: 130, backgroundColor: `${color}15` }}>
         {photo
-          ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          ? <Image source={photo} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><MaterialIcons name="place" size={36} color={color} /></View>
         }
         <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: color, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
@@ -55,7 +36,6 @@ function FavoriteCard({ zone, onRemove }: { zone: typeof SEED_FAVORITES[0]; onRe
           <MaterialIcons name="favorite" size={16} color="#fff" />
         </TouchableOpacity>
       </View>
-      {/* Info */}
       <View style={{ padding: 12 }}>
         <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>{zone.name}</Text>
         <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>{zone.type} · {zone.species.join(', ')}</Text>

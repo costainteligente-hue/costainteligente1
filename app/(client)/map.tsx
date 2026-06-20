@@ -9,6 +9,7 @@ import * as Location from 'expo-location';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { ZONE_ID_TO_PHOTO } from '@/lib/zone-photos';
 
 // ─── Zonas de pesca (13 zonas, Zihuatanejo-Ixtapa y alrededores) ──────────────
 const ALL_ZONES = [
@@ -139,7 +140,8 @@ function fmtKm(km: number): string {
   return `${Math.round(km)} km`;
 }
 
-// ─── Foto desde Wikimedia Commons (API pública, sin key) ─────────────────────
+// ─── Foto local de zona ───────────────────────────────────────────────────────
+// Usa imágenes locales en assets/images/zones/ en lugar de Wikimedia
 const photoCache: Record<string, string | null> = {};
 
 async function fetchWikimediaPhoto(searchTerm: string): Promise<string | null> {
@@ -380,8 +382,8 @@ function ZoneMap({ zones, centerLat, centerLon, zoom = MAP_ZOOM, height = 380, l
 }
 
 // ─── Foto de zona ─────────────────────────────────────────────────────────────
-function ZonePhoto({ wikimedia, style }: { wikimedia: string; style?: any }) {
-  const photo = useZonePhoto(wikimedia);
+function ZonePhoto({ zoneId, style }: { zoneId: string; style?: any }) {
+  const photo = ZONE_ID_TO_PHOTO[zoneId] ?? null;
   if (!photo) {
     return (
       <View style={[{ backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }, style]}>
@@ -389,7 +391,7 @@ function ZonePhoto({ wikimedia, style }: { wikimedia: string; style?: any }) {
       </View>
     );
   }
-  return <Image source={{ uri: photo }} style={style} resizeMode="cover" />;
+  return <Image source={photo} style={style} resizeMode="cover" />;
 }
 
 // ─── Modal detalle de zona ────────────────────────────────────────────────────
@@ -409,7 +411,7 @@ function ZoneDetailModal({ zone, onClose, favorited, onFavorite, distanceKm }: {
 
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
           {/* Foto de la playa */}
-          <ZonePhoto wikimedia={zone.wikimedia} style={{ width: '100%', height: 200 }} />
+          <ZonePhoto zoneId={zone.id} style={{ width: '100%', height: 200 }} />
 
           <View style={{ padding: 16 }}>
             {/* Badges */}
@@ -486,7 +488,7 @@ function ZoneDetailModal({ zone, onClose, favorited, onFavorite, distanceKm }: {
 function ZoneCard({ zone, distanceKm, favorited, onPress, onFavorite }: {
   zone: Zone; distanceKm?: number; favorited: boolean; onPress: () => void; onFavorite: () => void;
 }) {
-  const photo = useZonePhoto(zone.wikimedia);
+  const photo = ZONE_ID_TO_PHOTO[zone.id] ?? null;
   const color = LEVEL_COLORS[zone.level];
   return (
     <TouchableOpacity onPress={onPress} style={{ marginBottom: 12 }}>
@@ -494,7 +496,7 @@ function ZoneCard({ zone, distanceKm, favorited, onPress, onFavorite }: {
         {/* Foto */}
         <View style={{ height: 130, backgroundColor: '#E2E8F0' }}>
           {photo
-            ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            ? <Image source={photo} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                 <MaterialIcons name="landscape" size={36} color="#94A3B8" />
               </View>

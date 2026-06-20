@@ -9,25 +9,7 @@ import { COLORS, MONTH_NAMES } from '@/lib/constants';
 import { useAuthStore } from '@/stores/authStore';
 import { useWeather } from '@/hooks/useWeather';
 import { CardBox } from '@/components/ui/CardBox';
-
-// ─── Wikimedia photo hook ─────────────────────────────────────────────────────
-const wikiCache: Record<string, string | null> = {};
-function useWikiPhoto(term: string) {
-  const [photo, setPhoto] = useState<string | null>(null);
-  useEffect(() => {
-    if (term in wikiCache) { setPhoto(wikiCache[term]); return; }
-    fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(term)}&prop=pageimages&format=json&pithumbsize=500&origin=*`)
-      .then((r) => r.json())
-      .then((data) => {
-        const page = Object.values(data?.query?.pages ?? {})[0] as any;
-        const url  = page?.thumbnail?.source ?? null;
-        wikiCache[term] = url;
-        setPhoto(url);
-      })
-      .catch(() => { wikiCache[term] = null; });
-  }, [term]);
-  return photo;
-}
+import { ZONE_ID_TO_PHOTO } from '@/lib/zone-photos';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface UserPrefs {
@@ -137,11 +119,11 @@ function buildQuickCards(prefs: UserPrefs): QuickCard[] {
   return cards.filter((c) => { if (seen.has(c.label)) return false; seen.add(c.label); return true; });
 }
 
-// ─── Zonas destacadas (seed) ───────────────────────────────────────────────────
+// ─── Zonas destacadas ─────────────────────────────────────────────────────────
 const FEATURED_ZONES = [
-  { id: 'z2', name: 'La Ropa',              level: 'principiante', type: 'Playa',    risk: 'Bajo',  species: 'Jurel, Robalo',         wikimedia: 'Playa_La_Ropa' },
-  { id: 'z4', name: 'Bahía de Zihuatanejo', level: 'principiante', type: 'Bahía',    risk: 'Bajo',  species: 'Huachinango, Mojarra',   wikimedia: 'Bahía_de_Zihuatanejo' },
-  { id: 'z1', name: 'Bajo de Chila',        level: 'intermedio',   type: 'Offshore', risk: 'Medio', species: 'Pez vela, Dorado',       wikimedia: 'Zihuatanejo' },
+  { id: 'z2', name: 'Playa La Ropa',          level: 'principiante', type: 'Playa',    risk: 'Bajo',  species: 'Jurel, Robalo' },
+  { id: 'z4', name: 'Bahía de Zihuatanejo',   level: 'principiante', type: 'Bahía',    risk: 'Bajo',  species: 'Huachinango, Mojarra' },
+  { id: 'z1', name: 'Bajo de Chila',          level: 'intermedio',   type: 'Offshore', risk: 'Medio', species: 'Pez vela, Dorado' },
 ];
 
 const LEVEL_COLOR: Record<string, string> = {
@@ -166,26 +148,20 @@ const SPECIES_BY_MONTH: Record<number, string[]> = {
   11: ['Huachinango', 'Robalo'],
 };
 
-// ─── Tarjeta de zona con foto ─────────────────────────────────────────────────
 function ZoneCard({ zone, onPress }: { zone: typeof FEATURED_ZONES[0]; onPress: () => void }) {
-  const photo = useWikiPhoto(zone.wikimedia);
+  const photo = ZONE_ID_TO_PHOTO[zone.id] ?? null;
   const color = LEVEL_COLOR[zone.level];
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={{ width: 180, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}
-    >
-      {/* Foto */}
+    <TouchableOpacity onPress={onPress} style={{ width: 180, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}>
       <View style={{ height: 110, backgroundColor: `${color}15` }}>
         {photo
-          ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          ? <Image source={photo} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><MaterialIcons name="place" size={32} color={color} /></View>
         }
         <View style={{ position: 'absolute', top: 8, left: 8, backgroundColor: color, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
           <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{zone.level}</Text>
         </View>
       </View>
-      {/* Info */}
       <View style={{ padding: 12 }}>
         <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 13 }}>{zone.name}</Text>
         <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>{zone.type}</Text>
