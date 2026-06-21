@@ -11,7 +11,6 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
@@ -119,14 +118,40 @@ function ZoneForm({ onSave, onClose }: { onSave: () => void; onClose: () => void
 
   const pickPhoto = async () => {
     if (photos.length >= 5) { Alert.alert('Máximo 5 fotos'); return; }
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert('Permiso de galería requerido'); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7, allowsMultipleSelection: false,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setPhotos((prev) => [...prev, result.assets[0].uri]);
+
+    if (Platform.OS === 'web') {
+      // En web: crear input file temporal
+      const input = document.createElement('input');
+      input.type    = 'file';
+      input.accept  = 'image/*';
+      input.onchange = (e: any) => {
+        const file = e.target?.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const uri = ev.target?.result as string;
+          if (uri) setPhotos((prev) => [...prev, uri]);
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+      return;
+    }
+
+    // En nativo: usar expo-image-picker dinámicamente
+    try {
+      const ImagePicker = await import('expo-image-picker');
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Permiso de galería requerido'); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.7, allowsMultipleSelection: false,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setPhotos((prev) => [...prev, result.assets[0].uri]);
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir la galería.');
     }
   };
 
