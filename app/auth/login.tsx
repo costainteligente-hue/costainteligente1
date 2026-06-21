@@ -152,7 +152,7 @@ export default function LoginScreen() {
           <Text style={{ fontWeight: '700', color: '#0F172A', marginBottom: 6, fontSize: 14 }}>
             Contraseña
           </Text>
-          <View style={{ position: 'relative', marginBottom: 24 }}>
+          <View style={{ position: 'relative', marginBottom: 8 }}>
             <TextInput
               value={password}
               onChangeText={(v) => { setPassword(v); setError(''); }}
@@ -179,6 +179,16 @@ export default function LoginScreen() {
               <MaterialIcons name={showPass ? 'visibility-off' : 'visibility'} size={22} color="#94A3B8" />
             </TouchableOpacity>
           </View>
+
+          {/* Olvidaste tu contraseña */}
+          <TouchableOpacity
+            onPress={() => router.push('/auth/forgot-password' as any)}
+            style={{ alignSelf: 'flex-end', marginBottom: 20 }}
+          >
+            <Text style={{ color: COLORS.ocean, fontWeight: '700', fontSize: 13 }}>
+              ¿Olvidaste tu contraseña?
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={handleLogin}
