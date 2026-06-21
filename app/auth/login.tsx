@@ -214,30 +214,6 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
-            <Text style={{ color: '#94A3B8', fontWeight: '700' }}>o</Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
-          </View>
-
-          {/* Google OAuth — placeholder (requiere backend propio) */}
-          <TouchableOpacity
-            style={{
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: '#E2E8F0',
-              backgroundColor: '#fff',
-              padding: 13,
-              alignItems: 'center',
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: 8,
-              marginBottom: 24,
-            }}
-          >
-            <MaterialIcons name="account-circle" size={22} color="#4285F4" />
-            <Text style={{ fontWeight: '800', color: '#0F172A' }}>Continuar con Google</Text>
-          </TouchableOpacity>
 
           <View className="items-center gap-3">
             <TouchableOpacity onPress={() => router.push('/auth/register-client')}>
