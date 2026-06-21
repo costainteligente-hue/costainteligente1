@@ -30,7 +30,7 @@ interface AppUser {
 // ─── Fetch real ───────────────────────────────────────────────────────────────
 async function fetchAdminUsers(): Promise<AppUser[]> {
   if (typeof window !== 'undefined') {
-    const res = await fetch(`${API_BASE}/api/admin/users`);
+    const res = await fetch(`${API_BASE}/api/admin?r=users`);
     if (!res.ok) throw new Error('Error al obtener usuarios');
     return res.json();
   }

@@ -24,7 +24,7 @@ interface Report {
 // ─── Fetch / mutate ───────────────────────────────────────────────────────────
 async function fetchReports(): Promise<Report[]> {
   if (typeof window !== 'undefined') {
-    const res = await fetch(`${API_BASE}/api/admin/reports`);
+    const res = await fetch(`${API_BASE}/api/admin?r=reports`);
     if (!res.ok) throw new Error('Error cargando reportes');
     return res.json();
   }
@@ -52,7 +52,7 @@ async function fetchReports(): Promise<Report[]> {
 
 async function resolveReport(id: string) {
   if (typeof window !== 'undefined') {
-    const res = await fetch(`${API_BASE}/api/admin/reports`, {
+    const res = await fetch(`${API_BASE}/api/admin?r=reports`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
     });
     if (!res.ok) throw new Error('Error al resolver reporte');

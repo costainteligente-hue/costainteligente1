@@ -33,7 +33,7 @@ const ACTION_CONFIG: Record<string, { color: string; icon: keyof typeof Material
 
 async function fetchAuditLogs(): Promise<AuditLog[]> {
   if (typeof window !== 'undefined') {
-    const res = await fetch(`${API_BASE}/api/admin/audit`);
+    const res = await fetch(`${API_BASE}/api/admin?r=audit`);
     if (!res.ok) throw new Error('Error cargando logs');
     return res.json();
   }

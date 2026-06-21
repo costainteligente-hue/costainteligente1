@@ -28,7 +28,7 @@ interface PendingProvider {
 // ─── Fetch / mutate ───────────────────────────────────────────────────────────
 async function fetchProviders(): Promise<PendingProvider[]> {
   if (typeof window !== 'undefined') {
-    const res = await fetch(`${API_BASE}/api/admin/providers`);
+    const res = await fetch(`${API_BASE}/api/admin?r=providers`);
     if (!res.ok) throw new Error('Error cargando proveedores');
     return res.json();
   }
@@ -38,7 +38,7 @@ async function fetchProviders(): Promise<PendingProvider[]> {
 
 async function mutateProviderStatus(payload: { id: string; status: 'approved' | 'rejected'; rejectionReason?: string }) {
   if (typeof window !== 'undefined') {
-    const res = await fetch(`${API_BASE}/api/admin/providers`, {
+    const res = await fetch(`${API_BASE}/api/admin?r=providers`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
