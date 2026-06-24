@@ -85,12 +85,13 @@ export default function SOSScreen() {
             marginBottom: 20,
           }}
         >
-          <MaterialIcons name="sos" size={64} color="#fff" />
-          <Text style={{ color: '#fff', fontSize: 28, fontWeight: '800', marginTop: 8 }}>
-            Emergencia SOS
+          <MaterialIcons name="local-phone" size={56} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 24, fontWeight: '800', marginTop: 8 }}>
+            Contactos de emergencia
           </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, marginTop: 6, textAlign: 'center' }}>
-            Muestra esta pantalla a los servicios de emergencia o llama directamente.
+          <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+            Llama directamente a los servicios de emergencia oficiales.{'\n'}
+            Esta app no envía alertas automáticas — solo marca el número.
           </Text>
         </View>
 

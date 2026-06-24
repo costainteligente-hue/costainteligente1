@@ -270,9 +270,9 @@ export default function ClientDashboard() {
               </Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/(client)/sos' as any)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(220,38,38,0.85)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
-              <MaterialIcons name="sos" size={16} color="#fff" />
-              <Text style={{ color: '#fff', fontWeight: '900', fontSize: 13 }}>SOS</Text>
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
+              <MaterialIcons name="local-phone" size={16} color="#fff" />
+              <Text style={{ color: '#fff', fontWeight: '900', fontSize: 13 }}>Emergencia</Text>
             </TouchableOpacity>
           </View>
 
@@ -372,21 +372,22 @@ export default function ClientDashboard() {
             </View>
           </View>
 
-          {/* ── BANNER SOS ───────────────────────────────────────────────── */}
+          {/* ── BANNER CONTACTOS DE EMERGENCIA ───────────────────────────── */}
           <TouchableOpacity onPress={() => router.push('/(client)/sos' as any)}>
-            <LinearGradient colors={['#7F1D1D', '#DC2626']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={{ borderRadius: 20, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <View style={{ width: 52, height: 52, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-                <MaterialIcons name="sos" size={28} color="#fff" />
+            <View style={{ borderRadius: 20, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14,
+              backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 99, backgroundColor: `${COLORS.info}15`, alignItems: 'center', justifyContent: 'center' }}>
+                <MaterialIcons name="local-phone" size={28} color={COLORS.info} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: -0.3 }}>Emergencia en el mar</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 3 }}>
-                  Contactos de SEMAR, Cruz Roja y Capitanía de Puerto
+                <Text style={{ color: '#0F172A', fontWeight: '900', fontSize: 15, letterSpacing: -0.3 }}>Contactos de emergencia</Text>
+                <Text style={{ color: '#64748B', fontSize: 12, marginTop: 3 }}>
+                  SEMAR · Cruz Roja · Capitanía de Puerto
                 </Text>
               </View>
-              <MaterialIcons name="chevron-right" size={24} color="rgba(255,255,255,0.7)" />
-            </LinearGradient>
+              <MaterialIcons name="chevron-right" size={22} color="#CBD5E1" />
+            </View>
           </TouchableOpacity>
 
         </View>
