@@ -1,5 +1,13 @@
+/**
+ * Pantalla de Inicio — Cliente
+ * Rediseño completo: hero inmersivo, clima, especies del mes con fotos,
+ * zonas recomendadas, accesos rápidos y sección SOS
+ */
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, Image } from 'react-native';
+import {
+  ScrollView, View, Text, TouchableOpacity, Image,
+  Dimensions, ImageBackground,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,122 +16,85 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, MONTH_NAMES } from '@/lib/constants';
 import { useAuthStore } from '@/stores/authStore';
 import { useWeather } from '@/hooks/useWeather';
-import { CardBox } from '@/components/ui/CardBox';
 import { ZONE_ID_TO_PHOTO } from '@/lib/zone-photos';
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-interface UserPrefs {
-  interests: string[];
-  level: string | null;
-}
+const { width: SCREEN_W } = Dimensions.get('window');
 
-// ─── Greeting ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+interface UserPrefs { interests: string[]; level: string | null; }
+
 function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return '¡Buenos días';
-  if (h < 19) return '¡Buenas tardes';
-  return '¡Buenas noches';
+  if (h < 6)  return 'Madrugada';
+  if (h < 12) return 'Buenos días';
+  if (h < 19) return 'Buenas tardes';
+  return 'Buenas noches';
 }
 
-// ─── Weather strip ─────────────────────────────────────────────────────────────
-function WeatherStrip() {
-  const { data } = useWeather();
-  const temp  = data?.temperature ?? 29;
-  const wind  = data?.windspeed   ?? 18;
-  const code  = data?.weathercode ?? 0;
-  const icon  = code === 0 ? 'wb-sunny' : code <= 3 ? 'cloud' : 'grain';
-  const condition = code === 0 ? 'Cielo despejado' : code <= 3 ? 'Parcialmente nublado' : 'Lluvia ligera';
-  const windOk = wind < 30;
-
-  return (
-    <CardBox>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: `${COLORS.info}20`, alignItems: 'center', justifyContent: 'center' }}>
-          <MaterialIcons name={icon as any} size={26} color={COLORS.info} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>Zihuatanejo, Guerrero</Text>
-          <Text style={{ color: '#64748B', fontSize: 12 }}>{condition}</Text>
-        </View>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: '#0F172A' }}>{Math.round(temp)}°C</Text>
-      </View>
-      <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 10 }} />
-      <View style={{ flexDirection: 'row', gap: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <MaterialIcons name="air" size={15} color={windOk ? COLORS.success : COLORS.danger} />
-          <Text style={{ color: windOk ? COLORS.success : COLORS.danger, fontSize: 12, fontWeight: '700' }}>
-            {Math.round(wind)} km/h · {windOk ? 'Viento suave' : 'Viento fuerte'}
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <MaterialIcons name="waves" size={15} color={COLORS.ocean} />
-          <Text style={{ color: COLORS.ocean, fontSize: 12, fontWeight: '700' }}>
-            {windOk ? 'Mar en calma' : 'Mar agitado'}
-          </Text>
-        </View>
-      </View>
-      {!windOk && (
-        <View style={{ marginTop: 8, backgroundColor: `${COLORS.danger}10`, borderRadius: 10, padding: 8, flexDirection: 'row', gap: 6 }}>
-          <MaterialIcons name="warning" size={16} color={COLORS.danger} />
-          <Text style={{ color: COLORS.danger, fontSize: 12, fontWeight: '700', flex: 1 }}>
-            Condiciones adversas. Se recomienda no salir a mar abierto.
-          </Text>
-        </View>
-      )}
-    </CardBox>
-  );
+function getGreetingEmoji(): string {
+  const h = new Date().getHours();
+  if (h < 6)  return '🌙';
+  if (h < 12) return '☀️';
+  if (h < 19) return '🎣';
+  return '🌊';
 }
 
-// ─── Sección personalizada según intereses ────────────────────────────────────
-interface QuickCard {
-  label: string;
-  sub: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
-  color: string;
-  route: string;
+// ─── Foto de especie desde Wikimedia ─────────────────────────────────────────
+const SPECIES_WIKIMEDIA: Record<string, string> = {
+  'Pez vela':            'Indo-Pacific sailfish',
+  'Marlín azul':         'Atlantic blue marlin',
+  'Marlín rayado':       'Striped marlin Pacific',
+  'Marlín':              'Atlantic blue marlin',
+  'Dorado':              'Mahi-mahi',
+  'Atún aleta amarilla': 'Yellowfin tuna',
+  'Atún':                'Yellowfin tuna',
+  'Wahoo':               'Wahoo (fish)',
+  'Sierra':              'Pacific king mackerel',
+  'Jurel':               'Amberjack',
+  'Robalo':              'Common snook',
+  'Huachinango':         'Red snapper',
+  'Mojarra':             'Eucinostomus',
+};
+const wikiCache: Record<string, string | null> = {};
+async function fetchSpeciesPhoto(name: string): Promise<string | null> {
+  const term = SPECIES_WIKIMEDIA[name] ?? name + ' fish';
+  if (term in wikiCache) return wikiCache[term];
+  try {
+    const res  = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(term)}&prop=pageimages&format=json&pithumbsize=600&origin=*`);
+    const data = await res.json();
+    const page = Object.values(data?.query?.pages ?? {})[0] as any;
+    wikiCache[term] = page?.thumbnail?.source ?? null;
+    return wikiCache[term];
+  } catch { wikiCache[term] = null; return null; }
+}
+function useSpeciesPhoto(name: string) {
+  const [photo, setPhoto] = useState<string | null>(null);
+  useEffect(() => { fetchSpeciesPhoto(name).then(setPhoto); }, [name]);
+  return photo;
 }
 
-function buildQuickCards(prefs: UserPrefs): QuickCard[] {
-  const cards: QuickCard[] = [];
-  const { interests, level } = prefs;
+// ─── Datos del mes ────────────────────────────────────────────────────────────
+const SPECIES_BY_MONTH: Record<number, string[]> = {
+  0:  ['Pez vela', 'Marlín rayado'],
+  1:  ['Marlín azul', 'Wahoo'],
+  2:  ['Dorado', 'Atún aleta amarilla'],
+  3:  ['Sierra', 'Jurel'],
+  4:  ['Pez vela', 'Dorado', 'Marlín azul'],
+  5:  ['Pez vela', 'Marlín azul'],
+  6:  ['Pez vela', 'Dorado'],
+  7:  ['Pez vela', 'Dorado'],
+  8:  ['Atún aleta amarilla', 'Pez vela'],
+  9:  ['Pez vela', 'Atún'],
+  10: ['Huachinango', 'Robalo'],
+  11: ['Pez vela', 'Marlín rayado'],
+};
 
-  // Siempre incluir mapa
-  cards.push({ label: 'Mapa', sub: 'Zonas de pesca cerca', icon: 'map', color: COLORS.ocean, route: '/(client)/map' });
-
-  if (interests.includes('learn') || level === 'beginner' || level === 'tourist') {
-    cards.push({ label: 'Tutoriales', sub: 'Aprende a pescar', icon: 'play-circle-outline', color: COLORS.purple, route: '/(client)/tutorials' });
-    cards.push({ label: 'Equipo', sub: 'Qué llevar', icon: 'straighten', color: COLORS.warning, route: '/(client)/equipment' });
-  }
-  if (interests.includes('boat') || interests.includes('provider')) {
-    cards.push({ label: 'Servicios', sub: 'Lanchas y guías', icon: 'directions-boat', color: COLORS.info, route: '/(client)/services' });
-  }
-  if (interests.includes('restaurant')) {
-    cards.push({ label: 'Restaurantes', sub: 'Mariscos verificados', icon: 'restaurant', color: COLORS.brown, route: '/(client)/services' });
-  }
-  if (interests.includes('gear') || interests.includes('fishmarket')) {
-    cards.push({ label: 'Tiendas', sub: 'Equipo y pescaderías', icon: 'storefront', color: COLORS.success, route: '/(client)/services' });
-  }
-  if (interests.includes('transport')) {
-    cards.push({ label: 'Transporte', sub: 'Turístico', icon: 'airport-shuttle', color: COLORS.olive ?? '#4D7C0F', route: '/(client)/services' });
-  }
-
-  // Siempre incluir estos
-  cards.push({ label: 'Temporadas', sub: 'Especies del mes', icon: 'calendar-month', color: COLORS.success, route: '/(client)/seasons' });
-  cards.push({ label: 'Reservas', sub: 'Mis solicitudes', icon: 'event-available', color: COLORS.warning, route: '/(client)/reservations' });
-  cards.push({ label: 'Favoritos', sub: 'Zonas guardadas', icon: 'favorite', color: COLORS.danger, route: '/(client)/favorites' });
-  cards.push({ label: 'Normas', sub: 'Licencias y vedas', icon: 'gavel', color: COLORS.navy ?? '#0F172A', route: '/(client)/normas-pesca' });
-  cards.push({ label: 'Comunidad', sub: 'Capturas y tips', icon: 'people', color: COLORS.ocean, route: '/(client)/community' });
-
-  // Deduplica y limita
-  const seen = new Set<string>();
-  return cards.filter((c) => { if (seen.has(c.label)) return false; seen.add(c.label); return true; });
-}
-
-// ─── Zonas destacadas ─────────────────────────────────────────────────────────
 const FEATURED_ZONES = [
-  { id: 'z2', name: 'Playa La Ropa',          level: 'principiante', type: 'Playa',    risk: 'Bajo',  species: 'Jurel, Robalo' },
-  { id: 'z4', name: 'Bahía de Zihuatanejo',   level: 'principiante', type: 'Bahía',    risk: 'Bajo',  species: 'Huachinango, Mojarra' },
-  { id: 'z1', name: 'Bajo de Chila',          level: 'intermedio',   type: 'Offshore', risk: 'Medio', species: 'Pez vela, Dorado' },
+  { id: 'z2',  name: 'Playa La Ropa',         level: 'principiante', type: 'Orilla',   species: 'Jurel, Robalo',         risk: 'Bajo'  },
+  { id: 'z4',  name: 'Bahía de Zihuatanejo',  level: 'principiante', type: 'Bahía',    species: 'Huachinango, Mojarra',  risk: 'Bajo'  },
+  { id: 'z1',  name: 'Bajo de Chila',         level: 'intermedio',   type: 'Offshore', species: 'Pez vela, Dorado',      risk: 'Medio' },
+  { id: 'z19', name: 'Bahía de Banderas',      level: 'intermedio',   type: 'Bahía',    species: 'Marlín, Dorado, Atún',  risk: 'Medio' },
+  { id: 'z25', name: 'Cabo San Lucas',         level: 'avanzado',     type: 'Offshore', species: 'Marlín, Pez vela',      risk: 'Alto'  },
 ];
 
 const LEVEL_COLOR: Record<string, string> = {
@@ -132,59 +103,130 @@ const LEVEL_COLOR: Record<string, string> = {
   avanzado:     COLORS.danger,
 };
 
-// ─── Mes actual ───────────────────────────────────────────────────────────────
-const SPECIES_BY_MONTH: Record<number, string[]> = {
-  0:  ['Pez vela', 'Marlín azul'],
-  1:  ['Dorado', 'Wahoo'],
-  2:  ['Atún aleta amarilla', 'Dorado'],
-  3:  ['Pez vela', 'Dorado'],
-  4:  ['Marlín rayado', 'Pez vela'],
-  5:  ['Huachinango', 'Robalo'],
-  6:  ['Jurel', 'Sierra'],
-  7:  ['Pez vela', 'Dorado'],
-  8:  ['Atún', 'Wahoo'],
-  9:  ['Marlín azul', 'Dorado'],
-  10: ['Pez vela', 'Marlín'],
-  11: ['Huachinango', 'Robalo'],
-};
+// ─── Chip de especie con foto ─────────────────────────────────────────────────
+function SpeciesChip({ name }: { name: string }) {
+  const photo = useSpeciesPhoto(name);
+  return (
+    <TouchableOpacity style={{ alignItems: 'center', width: 96 }}>
+      <View style={{ width: 80, height: 80, borderRadius: 16, overflow: 'hidden', backgroundColor: `${COLORS.success}15`, borderWidth: 2, borderColor: `${COLORS.success}30`, marginBottom: 6 }}>
+        {photo
+          ? <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 28 }}>🐟</Text></View>
+        }
+      </View>
+      <Text style={{ color: '#0F172A', fontWeight: '700', fontSize: 11, textAlign: 'center' }} numberOfLines={2}>{name}</Text>
+    </TouchableOpacity>
+  );
+}
 
+// ─── Tarjeta de zona ──────────────────────────────────────────────────────────
 function ZoneCard({ zone, onPress }: { zone: typeof FEATURED_ZONES[0]; onPress: () => void }) {
   const photo = ZONE_ID_TO_PHOTO[zone.id] ?? null;
   const color = LEVEL_COLOR[zone.level];
   return (
-    <TouchableOpacity onPress={onPress} style={{ width: 180, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 }}>
-      <View style={{ height: 110, backgroundColor: `${color}15` }}>
+    <TouchableOpacity onPress={onPress} style={{ width: 200, borderRadius: 20, overflow: 'hidden', marginRight: 12,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10, elevation: 4 }}>
+      <View style={{ height: 130, backgroundColor: `${color}20` }}>
         {photo
           ? <Image source={photo} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-          : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><MaterialIcons name="place" size={32} color={color} /></View>
+          : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><MaterialIcons name="place" size={36} color={color} /></View>
         }
-        <View style={{ position: 'absolute', top: 8, left: 8, backgroundColor: color, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <LinearGradient colors={['transparent', 'rgba(15,23,42,0.85)']} style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 70 }} />
+        <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: color, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
           <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{zone.level}</Text>
         </View>
+        <View style={{ position: 'absolute', bottom: 8, left: 12, right: 12 }}>
+          <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14 }} numberOfLines={1}>{zone.name}</Text>
+        </View>
       </View>
-      <View style={{ padding: 12 }}>
-        <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 13 }}>{zone.name}</Text>
-        <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>{zone.type}</Text>
-        <Text style={{ color: COLORS.success, fontSize: 11, fontWeight: '700', marginTop: 4 }}>🐟 {zone.species}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
-          <MaterialIcons name="security" size={12} color={zone.risk === 'Bajo' ? COLORS.success : COLORS.warning} />
-          <Text style={{ color: zone.risk === 'Bajo' ? COLORS.success : COLORS.warning, fontSize: 11, fontWeight: '700' }}>Riesgo {zone.risk}</Text>
+      <View style={{ backgroundColor: '#fff', padding: 12 }}>
+        <Text style={{ color: '#64748B', fontSize: 11 }}>{zone.type}</Text>
+        <Text style={{ color: COLORS.success, fontSize: 11, fontWeight: '700', marginTop: 3 }}>🐟 {zone.species}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 5 }}>
+          <MaterialIcons name="security" size={11} color={zone.risk === 'Bajo' ? COLORS.success : zone.risk === 'Medio' ? COLORS.warning : COLORS.danger} />
+          <Text style={{ fontSize: 10, fontWeight: '700', color: zone.risk === 'Bajo' ? COLORS.success : zone.risk === 'Medio' ? COLORS.warning : COLORS.danger }}>Riesgo {zone.risk}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 }
 
+// ─── Acceso rápido ────────────────────────────────────────────────────────────
+function QuickButton({ icon, label, color, onPress }: {
+  icon: keyof typeof MaterialIcons.glyphMap; label: string; color: string; onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity onPress={onPress} style={{ alignItems: 'center', width: 72 }}>
+      <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: `${color}15`, alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+        shadowColor: color, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 }}>
+        <MaterialIcons name={icon} size={26} color={color} />
+      </View>
+      <Text style={{ color: '#374151', fontWeight: '700', fontSize: 10, textAlign: 'center' }} numberOfLines={2}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Clima compacto ───────────────────────────────────────────────────────────
+function WeatherCard() {
+  const { data } = useWeather();
+  const temp   = data?.temperature ?? 29;
+  const wind   = data?.windspeed   ?? 18;
+  const code   = data?.weathercode ?? 0;
+  const icon   = code === 0 ? 'wb-sunny' : code <= 3 ? 'partly-cloudy-day' : 'grain';
+  const cond   = code === 0 ? 'Despejado' : code <= 3 ? 'Nublado parcial' : 'Lluvia';
+  const windOk = wind < 30;
+  const seaOk  = wind < 25;
+
+  return (
+    <LinearGradient colors={windOk ? ['#0369A1', '#0891B2'] : ['#9F1239', '#DC2626']}
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={{ borderRadius: 20, padding: 18, marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+        <View>
+          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '600' }}>Condición actual</Text>
+          <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700', marginTop: 2 }}>Zihuatanejo, Gro.</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, marginTop: 4 }}>{cond}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ color: '#fff', fontSize: 44, fontWeight: '900', letterSpacing: -1 }}>{Math.round(temp)}°</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11 }}>Celsius</Text>
+        </View>
+      </View>
+      {/* Stats row */}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {[
+          { icon: 'air' as const,   label: `${Math.round(wind)} km/h`, sub: windOk ? 'Viento OK' : 'Viento fuerte' },
+          { icon: 'waves' as const, label: seaOk ? 'En calma' : 'Agitado', sub: 'Estado del mar' },
+          { icon: 'thermostat' as const, label: `${Math.round(temp)}°C`, sub: 'Temperatura' },
+        ].map((s) => (
+          <View key={s.sub} style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: 10, alignItems: 'center' }}>
+            <MaterialIcons name={s.icon} size={18} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12, marginTop: 3 }}>{s.label}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 9, marginTop: 1 }}>{s.sub}</Text>
+          </View>
+        ))}
+      </View>
+      {!windOk && (
+        <View style={{ marginTop: 12, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: 10, flexDirection: 'row', gap: 6 }}>
+          <MaterialIcons name="warning" size={16} color="#FCD34D" />
+          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700', flex: 1 }}>
+            ⚠ Condiciones adversas. No se recomienda salir a mar abierto.
+          </Text>
+        </View>
+      )}
+    </LinearGradient>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ClientDashboard() {
-  const router = useRouter();
+  const router  = useRouter();
   const { user } = useAuthStore();
   const [prefs, setPrefs] = useState<UserPrefs>({ interests: [], level: null });
 
   const firstName = user?.fullName?.split(' ')[0] ?? 'Pescador';
   const month     = new Date().getMonth();
   const species   = SPECIES_BY_MONTH[month] ?? [];
-  const cards     = buildQuickCards(prefs);
 
   useEffect(() => {
     AsyncStorage.getItem('costa:user_prefs').then((raw) => {
@@ -197,115 +239,157 @@ export default function ClientDashboard() {
     tourist: 'Turista', local: 'Pescador local',
   };
 
+  const QUICK_ACTIONS = [
+    { icon: 'map' as const,               label: 'Mapa',        color: COLORS.ocean,   route: '/(client)/map' },
+    { icon: 'storefront' as const,        label: 'Servicios',   color: COLORS.info,    route: '/(client)/services' },
+    { icon: 'calendar-month' as const,    label: 'Temporadas',  color: COLORS.success, route: '/(client)/seasons' },
+    { icon: 'people' as const,            label: 'Comunidad',   color: COLORS.purple,  route: '/(client)/community' },
+    { icon: 'event-available' as const,   label: 'Reservas',    color: COLORS.warning, route: '/(client)/reservations' },
+    { icon: 'favorite' as const,          label: 'Favoritos',   color: COLORS.danger,  route: '/(client)/favorites' },
+    { icon: 'play-circle-outline' as const, label: 'Tutoriales', color: '#7C3AED',    route: '/(client)/tutorials' },
+    { icon: 'gavel' as const,             label: 'Normas',      color: '#0F172A',      route: '/(client)/normas-pesca' },
+  ];
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
 
-        {/* Hero */}
-        <LinearGradient
-          colors={['#0F172A', '#0F766E']}
+        {/* ── HERO ──────────────────────────────────────────────────────────── */}
+        <LinearGradient colors={['#0F172A', '#0F766E', '#14B8A6']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={{ borderRadius: 24, padding: 22, marginBottom: 14 }}
-        >
-          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' }}>
-            {getGreeting()},
-          </Text>
-          <Text style={{ color: '#fff', fontSize: 26, fontWeight: '800', marginTop: 2 }}>
-            {firstName} 🎣
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 28 }}>
+
+          {/* Top row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <View>
+              <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, fontWeight: '600' }}>
+                {getGreeting()} {getGreetingEmoji()}
+              </Text>
+              <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: -0.5, marginTop: 2 }}>
+                {firstName}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/(client)/sos' as any)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(220,38,38,0.85)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
+              <MaterialIcons name="sos" size={16} color="#fff" />
+              <Text style={{ color: '#fff', fontWeight: '900', fontSize: 13 }}>SOS</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Tags de perfil */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
             {prefs.level && (
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>
-                  ⭐ {levelLabel[prefs.level] ?? prefs.level}
-                </Text>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={{ fontSize: 12 }}>⭐</Text>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>{levelLabel[prefs.level] ?? prefs.level}</Text>
               </View>
             )}
-            {prefs.interests.slice(0, 2).map((i) => (
-              <View key={i} style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+            {['boat', 'learn', 'beach', 'restaurant'].filter((i) => prefs.interests.includes(i)).slice(0, 2).map((i) => (
+              <View key={i} style={{ backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
                 <Text style={{ color: 'rgba(255,255,255,0.85)', fontWeight: '600', fontSize: 11 }}>
-                  {i === 'boat' ? '⛵ Lancha' : i === 'learn' ? '📚 Aprender' : i === 'beach' ? '🏖 Playa' : i === 'restaurant' ? '🍽 Restaurantes' : i}
+                  {i === 'boat' ? '⛵ Lancha' : i === 'learn' ? '📚 Aprender' : i === 'beach' ? '🏖 Playa' : '🍽 Restaurantes'}
                 </Text>
               </View>
             ))}
-            {prefs.interests.length === 0 && (
-              <TouchableOpacity
-                onPress={() => router.push('/auth/onboarding' as any)}
-                style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}
-              >
+            {!prefs.level && (
+              <TouchableOpacity onPress={() => router.push('/auth/onboarding' as any)}
+                style={{ backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <MaterialIcons name="tune" size={13} color="#fff" />
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Personalizar</Text>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Personalizar perfil</Text>
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Quick actions en el hero */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+            {QUICK_ACTIONS.map((a) => (
+              <TouchableOpacity key={a.label} onPress={() => router.push(a.route as any)}
+                style={{ alignItems: 'center', gap: 5 }}>
+                <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialIcons name={a.icon} size={24} color="#fff" />
+                </View>
+                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: '700' }}>{a.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </LinearGradient>
 
-        {/* Clima */}
-        <WeatherStrip />
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
 
-        {/* Especies del mes */}
-        <CardBox>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <MaterialIcons name="set-meal" size={20} color={COLORS.success} />
-            <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>
-              Especies del mes · {MONTH_NAMES[month]}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {species.map((s) => (
-              <View key={s} style={{ backgroundColor: `${COLORS.success}15`, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: `${COLORS.success}30` }}>
-                <Text style={{ color: COLORS.success, fontWeight: '700', fontSize: 13 }}>🐟 {s}</Text>
+          {/* ── CLIMA ─────────────────────────────────────────────────────── */}
+          <WeatherCard />
+
+          {/* ── ESPECIES DEL MES ─────────────────────────────────────────── */}
+          <View style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View>
+                <Text style={{ fontWeight: '900', color: '#0F172A', fontSize: 18, letterSpacing: -0.3 }}>
+                  🐟 Especies del mes
+                </Text>
+                <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>{MONTH_NAMES[month]} · Más activas ahora</Text>
               </View>
-            ))}
+              <TouchableOpacity onPress={() => router.push('/(client)/seasons' as any)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: `${COLORS.success}12`, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
+                <Text style={{ color: COLORS.success, fontWeight: '800', fontSize: 12 }}>Ver todo</Text>
+                <MaterialIcons name="arrow-forward" size={14} color={COLORS.success} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {species.map((s) => <SpeciesChip key={s} name={s} />)}
+            </ScrollView>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push('/(client)/seasons' as any)}
-            style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}
-          >
-            <Text style={{ color: COLORS.ocean, fontWeight: '700', fontSize: 13 }}>Ver todas las temporadas</Text>
-            <MaterialIcons name="arrow-forward" size={16} color={COLORS.ocean} />
+
+          {/* ── ZONAS RECOMENDADAS ────────────────────────────────────────── */}
+          <View style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View>
+                <Text style={{ fontWeight: '900', color: '#0F172A', fontSize: 18, letterSpacing: -0.3 }}>
+                  📍 Zonas recomendadas
+                </Text>
+                <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>Pacífico, Golfo y Caribe</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/(client)/map' as any)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: `${COLORS.ocean}12`, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 }}>
+                <Text style={{ color: COLORS.ocean, fontWeight: '800', fontSize: 12 }}>Ver mapa</Text>
+                <MaterialIcons name="map" size={14} color={COLORS.ocean} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 16 }}>
+              {FEATURED_ZONES.map((z) => (
+                <ZoneCard key={z.id} zone={z} onPress={() => router.push('/(client)/map' as any)} />
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* ── ACCESOS RÁPIDOS GRID ─────────────────────────────────────── */}
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ fontWeight: '900', color: '#0F172A', fontSize: 18, letterSpacing: -0.3, marginBottom: 4 }}>⚡ Accesos rápidos</Text>
+            <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 14 }}>Todo en un solo lugar</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between' }}>
+              {QUICK_ACTIONS.map((a) => (
+                <QuickButton key={a.label} icon={a.icon} label={a.label} color={a.color} onPress={() => router.push(a.route as any)} />
+              ))}
+            </View>
+          </View>
+
+          {/* ── BANNER SOS ───────────────────────────────────────────────── */}
+          <TouchableOpacity onPress={() => router.push('/(client)/sos' as any)}>
+            <LinearGradient colors={['#7F1D1D', '#DC2626']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={{ borderRadius: 20, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <MaterialIcons name="sos" size={28} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: -0.3 }}>Emergencia en el mar</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 3 }}>
+                  Contactos de SEMAR, Cruz Roja y Capitanía de Puerto
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
           </TouchableOpacity>
-        </CardBox>
 
-        {/* Zonas destacadas */}
-        <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 16, marginBottom: 10, marginTop: 4 }}>
-          Zonas recomendadas
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', gap: 12, paddingRight: 16 }}>
-            {FEATURED_ZONES.filter((z) =>
-              prefs.level === 'advanced' || z.level !== 'avanzado'
-            ).map((z) => (
-              <ZoneCard key={z.id} zone={z} onPress={() => router.push('/(client)/map' as any)} />
-            ))}
-          </View>
-        </ScrollView>
-
-        {/* Accesos rápidos personalizados */}
-        <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 16, marginBottom: 10 }}>
-          Accesos rápidos
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {cards.slice(0, 8).map((item) => (
-            <TouchableOpacity
-              key={item.label}
-              onPress={() => router.push(item.route as any)}
-              style={{
-                width: '47%', backgroundColor: '#fff', borderRadius: 16,
-                borderWidth: 1, borderColor: '#E2E8F0', padding: 14, gap: 6,
-                shadowColor: '#0F172A', shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-              }}
-            >
-              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: `${item.color}18`, alignItems: 'center', justifyContent: 'center' }}>
-                <MaterialIcons name={item.icon} size={24} color={item.color} />
-              </View>
-              <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 13 }}>{item.label}</Text>
-              <Text style={{ color: '#94A3B8', fontSize: 11 }}>{item.sub}</Text>
-            </TouchableOpacity>
-          ))}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
