@@ -11,99 +11,60 @@ import { CardBox } from '@/components/ui/CardBox';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { ZONE_ID_TO_PHOTO } from '@/lib/zone-photos';
 
-// ─── Zonas de pesca (13 zonas, Zihuatanejo-Ixtapa y alrededores) ──────────────
+// ─── Zonas de pesca — México completo (costas Pacífico, Golfo y Caribe) ──────
 const ALL_ZONES = [
-  {
-    id: 'z1',  name: 'Bajo de Chila',        level: 'intermedio',   type: 'Offshore',
-    latitude: 17.58,  longitude: -101.62,
-    description: 'Zona de aguas profundas ideal para pez vela y marlín.',
-    species: ['Pez vela', 'Marlín azul', 'Dorado'],
-    wikimedia: 'Zihuatanejo',
-  },
-  {
-    id: 'z2',  name: 'Playa La Ropa',         level: 'principiante', type: 'Playa',
-    latitude: 17.6280, longitude: -101.5510,
-    description: 'Playa protegida perfecta para principiantes y pesca desde la orilla.',
-    species: ['Jurel', 'Sierra', 'Robalo'],
-    wikimedia: 'Playa_La_Ropa',
-  },
-  {
-    id: 'z3',  name: 'Punta Ixtapa',          level: 'avanzado',     type: 'Rocas',
-    latitude: 17.6720, longitude: -101.6440,
-    description: 'Zona rocosa con corrientes fuertes. Requiere experiencia y equipo adecuado.',
-    species: ['Atún aleta amarilla', 'Wahoo', 'Pez vela'],
-    wikimedia: 'Ixtapa',
-  },
-  {
-    id: 'z4',  name: 'Bahía de Zihuatanejo',  level: 'principiante', type: 'Bahía',
-    latitude: 17.6380, longitude: -101.5520,
-    description: 'Bahía tranquila ideal para pesca recreativa y avistamiento de fauna.',
-    species: ['Huachinango', 'Robalo', 'Mojarra'],
-    wikimedia: 'Bahía_de_Zihuatanejo',
-  },
-  {
-    id: 'z5',  name: 'Morro de Petatlán',     level: 'avanzado',     type: 'Offshore',
-    latitude: 17.5200, longitude: -101.7100,
-    description: 'Zona de pesca de altura con gran diversidad de especies pelágicas.',
-    species: ['Marlín rayado', 'Atún', 'Dorado', 'Wahoo'],
-    wikimedia: 'Petatlán',
-  },
-  {
-    id: 'z6',  name: 'Playa Las Gatas',       level: 'principiante', type: 'Playa',
-    latitude: 17.6220, longitude: -101.5480,
-    description: 'Zona muy conocida para pesca desde orilla y snorkel en aguas tranquilas.',
-    species: ['Pargo', 'Mojarra', 'Cabrilla'],
-    wikimedia: 'Playa_Las_Gatas',
-  },
-  {
-    id: 'z7',  name: 'Playa Larga',           level: 'principiante', type: 'Playa',
-    latitude: 17.6050, longitude: -101.5650,
-    description: 'Playa extensa ideal para pesca recreativa y acceso vehicular.',
-    species: ['Robalo', 'Sierra', 'Jurel'],
-    wikimedia: 'Zihuatanejo',
-  },
-  {
-    id: 'z8',  name: 'Playa Quieta',          level: 'principiante', type: 'Playa',
-    latitude: 17.6650, longitude: -101.6200,
-    description: 'Aguas tranquilas protegidas, perfecta para principiantes y familias.',
-    species: ['Mojarra', 'Robalo', 'Trucha marina'],
-    wikimedia: 'Ixtapa_Island',
-  },
-  {
-    id: 'z9',  name: 'Isla Ixtapa',           level: 'intermedio',   type: 'Isla',
-    latitude: 17.6750, longitude: -101.6530,
-    description: 'Zona de buceo y pesca de orilla alrededor de la isla, rica en fauna marina.',
-    species: ['Pargo', 'Cabrilla', 'Barracuda'],
-    wikimedia: 'Ixtapa_Island',
-  },
-  {
-    id: 'z10', name: 'Playa Linda (Embarcadero)', level: 'intermedio', type: 'Embarcadero',
-    latitude: 17.6600, longitude: -101.6050,
-    description: 'Principal embarcadero para lancheros y tours de pesca deportiva.',
-    species: ['Pez vela', 'Marlín', 'Dorado', 'Atún'],
-    wikimedia: 'Ixtapa',
-  },
-  {
-    id: 'z11', name: 'Playa Majahua',         level: 'intermedio',   type: 'Playa',
-    latitude: 17.5980, longitude: -101.5880,
-    description: 'Zona de pesca artesanal local con alto volumen de capturas.',
-    species: ['Sierra', 'Robalo', 'Huachinango'],
-    wikimedia: 'Zihuatanejo',
-  },
-  {
-    id: 'z12', name: 'Banco de Papanoa',      level: 'avanzado',     type: 'Offshore',
-    latitude: 17.3200, longitude: -101.0200,
-    description: 'Banco offshore reconocido a 40 km al sureste, con gran diversidad pelágica.',
-    species: ['Marlín', 'Atún', 'Dorado', 'Wahoo', 'Pez vela'],
-    wikimedia: 'Papanoa',
-  },
-  {
-    id: 'z13', name: 'El Pericón (Petatlán)', level: 'principiante', type: 'Costera',
-    latitude: 17.5400, longitude: -101.2700,
-    description: 'Zona costera de pesca artesanal con acceso desde tierra.',
-    species: ['Robalo', 'Huachinango', 'Mojarra', 'Sierra'],
-    wikimedia: 'Petatlán',
-  },
+  // ── GUERRERO / ZIHUATANEJO-IXTAPA ──────────────────────────────────────────
+  { id: 'z1',  name: 'Bajo de Chila',           level: 'intermedio',   type: 'Offshore',    latitude: 17.58,   longitude: -101.62,  description: 'Zona de aguas profundas ideal para pez vela y marlín.',                   species: ['Pez vela', 'Marlín azul', 'Dorado'],               wikimedia: 'Zihuatanejo' },
+  { id: 'z2',  name: 'Playa La Ropa',            level: 'principiante', type: 'Orilla',      latitude: 17.628,  longitude: -101.551, description: 'Playa protegida perfecta para pesca desde la orilla.',                    species: ['Jurel', 'Sierra', 'Robalo'],                       wikimedia: 'Playa_La_Ropa' },
+  { id: 'z3',  name: 'Punta Ixtapa',             level: 'avanzado',     type: 'Rocas',       latitude: 17.672,  longitude: -101.644, description: 'Zona rocosa con corrientes fuertes.',                                     species: ['Atún aleta amarilla', 'Wahoo', 'Pez vela'],        wikimedia: 'Ixtapa' },
+  { id: 'z4',  name: 'Bahía de Zihuatanejo',     level: 'principiante', type: 'Bahía',       latitude: 17.638,  longitude: -101.552, description: 'Bahía tranquila ideal para pesca recreativa.',                            species: ['Huachinango', 'Robalo', 'Mojarra'],                wikimedia: 'Bahía_de_Zihuatanejo' },
+  { id: 'z5',  name: 'Morro de Petatlán',        level: 'avanzado',     type: 'Offshore',    latitude: 17.52,   longitude: -101.71,  description: 'Zona de pesca de altura con gran diversidad pelágica.',                  species: ['Marlín rayado', 'Atún', 'Dorado', 'Wahoo'],        wikimedia: 'Petatlán' },
+  { id: 'z6',  name: 'Playa Las Gatas',          level: 'principiante', type: 'Orilla',      latitude: 17.622,  longitude: -101.548, description: 'Pesca desde orilla y snorkel en aguas tranquilas.',                      species: ['Pargo', 'Mojarra', 'Cabrilla'],                    wikimedia: 'Playa_Las_Gatas' },
+  { id: 'z7',  name: 'Playa Larga',              level: 'principiante', type: 'Orilla',      latitude: 17.605,  longitude: -101.565, description: 'Playa extensa ideal para pesca recreativa desde la orilla.',             species: ['Robalo', 'Sierra', 'Jurel'],                       wikimedia: 'Zihuatanejo' },
+  { id: 'z8',  name: 'Playa Majahua',            level: 'intermedio',   type: 'Orilla',      latitude: 17.598,  longitude: -101.588, description: 'Zona de pesca artesanal con alto volumen de capturas.',                 species: ['Sierra', 'Robalo', 'Huachinango'],                 wikimedia: 'Zihuatanejo' },
+  { id: 'z9',  name: 'Barra de Potosí',          level: 'principiante', type: 'Laguna',      latitude: 17.467,  longitude: -101.35,  description: 'Laguna costera con pesca de laguna y desembocadura.',                   species: ['Robalo', 'Mojarra', 'Trucha marina'],              wikimedia: 'Petatlán' },
+  // ── ACAPULCO ────────────────────────────────────────────────────────────────
+  { id: 'z10', name: 'Bahía de Acapulco',        level: 'principiante', type: 'Bahía',       latitude: 16.855,  longitude: -99.89,   description: 'Bahía histórica con pesca deportiva y recreativa.',                     species: ['Pargo', 'Jurel', 'Robalo'],                        wikimedia: 'Acapulco' },
+  { id: 'z11', name: 'Punta Diamante',           level: 'avanzado',     type: 'Offshore',    latitude: 16.78,   longitude: -99.76,   description: 'Zona offshore al sur de Acapulco, excelente para pez vela.',            species: ['Pez vela', 'Marlín', 'Dorado'],                    wikimedia: 'Acapulco' },
+  { id: 'z12', name: 'Playa Pie de la Cuesta',   level: 'principiante', type: 'Orilla',      latitude: 16.902,  longitude: -99.976,  description: 'Pesca desde la orilla en la laguna de Coyuca.',                        species: ['Robalo', 'Mojarra', 'Lisa'],                       wikimedia: 'Acapulco' },
+  // ── MICHOACÁN / LÁZARO CÁRDENAS ─────────────────────────────────────────────
+  { id: 'z13', name: 'Playa Nexpa',              level: 'principiante', type: 'Orilla',      latitude: 18.42,   longitude: -102.93,  description: 'Playa de surf y pesca desde la orilla en Michoacán.',                  species: ['Robalo', 'Pargo', 'Sierra'],                       wikimedia: 'Nexpa_beach' },
+  { id: 'z14', name: 'Caleta de Campos',         level: 'intermedio',   type: 'Bahía',       latitude: 18.46,   longitude: -102.72,  description: 'Pequeña bahía pesquera con gran diversidad de especies.',              species: ['Huachinango', 'Pargo', 'Cabrilla'],                wikimedia: 'Caleta_de_Campos' },
+  { id: 'z15', name: 'Playa Azul',               level: 'principiante', type: 'Orilla',      latitude: 17.98,   longitude: -102.41,  description: 'Playa popular para pesca desde la orilla en Michoacán.',              species: ['Robalo', 'Jurel', 'Mojarra'],                      wikimedia: 'Playa_Azul_Michoacán' },
+  // ── JALISCO / MANZANILLO ────────────────────────────────────────────────────
+  { id: 'z16', name: 'Bahía de Navidad',         level: 'principiante', type: 'Bahía',       latitude: 19.2,    longitude: -104.7,   description: 'Bahía tranquila con laguna y pesca artesanal en Jalisco.',             species: ['Robalo', 'Pargo', 'Huachinango'],                  wikimedia: 'Barra_de_Navidad' },
+  { id: 'z17', name: 'Manzanillo Offshore',      level: 'avanzado',     type: 'Offshore',    latitude: 19.05,   longitude: -104.25,  description: 'Aguas profundas con corrientes ricas en peces pelágicos.',             species: ['Atún', 'Pez vela', 'Marlín', 'Dorado'],            wikimedia: 'Manzanillo_Colima' },
+  { id: 'z18', name: 'Playa La Audiencia',       level: 'principiante', type: 'Orilla',      latitude: 19.085,  longitude: -104.34,  description: 'Pequeña cala para pesca desde la orilla.',                             species: ['Pargo', 'Cabrilla', 'Mojarra'],                    wikimedia: 'Manzanillo_Colima' },
+  // ── NAYARIT / RIVIERA NAYARIT ───────────────────────────────────────────────
+  { id: 'z19', name: 'Bahía de Banderas',        level: 'intermedio',   type: 'Bahía',       latitude: 20.65,   longitude: -105.32,  description: 'Una de las bahías más grandes de México. Pesca deportiva de altura.',  species: ['Pez vela', 'Marlín', 'Dorado', 'Atún'],            wikimedia: 'Bahía_de_Banderas' },
+  { id: 'z20', name: 'Sayulita',                 level: 'principiante', type: 'Orilla',      latitude: 20.87,   longitude: -105.44,  description: 'Pueblo pesquero con pesca desde la orilla y pangas.',                 species: ['Pargo', 'Jurel', 'Robalo'],                        wikimedia: 'Sayulita_Nayarit' },
+  { id: 'z21', name: 'San Blas Marismas',        level: 'principiante', type: 'Manglar',     latitude: 21.55,   longitude: -105.31,  description: 'Zona de manglar rica en robalo, mojarra y lisa.',                      species: ['Robalo', 'Mojarra', 'Lisa', 'Camarón'],            wikimedia: 'San_Blas_Nayarit' },
+  // ── SINALOA / MAZATLÁN ──────────────────────────────────────────────────────
+  { id: 'z22', name: 'Puerto Mazatlán',          level: 'intermedio',   type: 'Offshore',    latitude: 23.18,   longitude: -106.45,  description: 'Capital del marlín. Torneos internacionales de pesca deportiva.',     species: ['Marlín rayado', 'Pez vela', 'Dorado'],             wikimedia: 'Mazatlán' },
+  { id: 'z23', name: 'Isla de la Piedra',        level: 'principiante', type: 'Orilla',      latitude: 23.14,   longitude: -106.41,  description: 'Pesca desde la orilla y embarcaciones pequeñas.',                     species: ['Pargo', 'Huachinango', 'Robalo'],                  wikimedia: 'Mazatlán' },
+  { id: 'z24', name: 'Bahía Santa María',        level: 'intermedio',   type: 'Bahía',       latitude: 24.98,   longitude: -108.02,  description: 'Bahía con abundante pesca de camarón y especies demersal.',           species: ['Camarón', 'Sierra', 'Robalo'],                     wikimedia: 'Sinaloa' },
+  // ── BAJA CALIFORNIA SUR ────────────────────────────────────────────────────
+  { id: 'z25', name: 'Cabo San Lucas',           level: 'avanzado',     type: 'Offshore',    latitude: 22.89,   longitude: -109.91,  description: 'Arco de Cabo. Zona de pesca deportiva de clase mundial.',            species: ['Marlín', 'Pez vela', 'Atún', 'Wahoo', 'Dorado'],  wikimedia: 'Cabo_San_Lucas' },
+  { id: 'z26', name: 'La Paz — Espíritu Santo',  level: 'intermedio',   type: 'Isla',        latitude: 24.43,   longitude: -110.38,  description: 'Isla Espíritu Santo, reserva biosfera con pesca deportiva.',         species: ['Dorado', 'Wahoo', 'Atún', 'Pargo'],                wikimedia: 'Espíritu_Santo_island' },
+  { id: 'z27', name: 'Los Barriles',             level: 'intermedio',   type: 'Offshore',    latitude: 23.69,   longitude: -109.7,   description: 'East Cape, conocido por la temporada de pez gallo.',                 species: ['Pez gallo', 'Dorado', 'Wahoo', 'Atún'],            wikimedia: 'Baja_California_Sur' },
+  { id: 'z28', name: 'Loreto — Mar de Cortés',   level: 'principiante', type: 'Bahía',       latitude: 26.01,   longitude: -111.34,  description: 'Parque Nacional con aguas prístinas del Mar de Cortés.',            species: ['Pargo', 'Cabrilla', 'Jurel', 'Dorado'],            wikimedia: 'Loreto_Baja_California_Sur' },
+  // ── SONORA / GOLFO DE CALIFORNIA ────────────────────────────────────────────
+  { id: 'z29', name: 'Guaymas — Mar de Cortés',  level: 'intermedio',   type: 'Offshore',    latitude: 27.92,   longitude: -110.88,  description: 'Zona de pesca industrial y deportiva en el Mar de Cortés.',         species: ['Atún', 'Marlín', 'Pargo', 'Cabrilla'],             wikimedia: 'Guaymas' },
+  { id: 'z30', name: 'Puerto Peñasco',           level: 'principiante', type: 'Orilla',      latitude: 31.3,    longitude: -113.54,  description: 'Zona de pesca en el Alto Golfo, mariscos y corvina.',               species: ['Corvina', 'Curvina', 'Sierra', 'Camarón'],         wikimedia: 'Puerto_Peñasco' },
+  // ── GOLFO DE MÉXICO / VERACRUZ ──────────────────────────────────────────────
+  { id: 'z31', name: 'Veracruz — Arrecife',      level: 'intermedio',   type: 'Arrecife',    latitude: 19.15,   longitude: -96.1,    description: 'Sistema arrecifal de Veracruz, pesca en arrecife.',                  species: ['Pargo', 'Mero', 'Barracuda'],                      wikimedia: 'Veracruz' },
+  { id: 'z32', name: 'Tuxpan Offshore',          level: 'avanzado',     type: 'Offshore',    latitude: 21.0,    longitude: -97.2,    description: 'Pesca de altura en el Golfo de México.',                             species: ['Marlín', 'Pez vela', 'Atún', 'Wahoo'],            wikimedia: 'Tuxpan_Veracruz' },
+  { id: 'z33', name: 'Tampico — Delta del Pánuco', level: 'principiante', type: 'Río',       latitude: 22.26,   longitude: -97.87,   description: 'Delta del Río Pánuco, pesca de robalo y bagre.',                     species: ['Robalo', 'Bagre', 'Mojarra'],                      wikimedia: 'Tampico' },
+  // ── CAMPECHE / YUCATÁN ──────────────────────────────────────────────────────
+  { id: 'z34', name: 'Campeche — Sonda',         level: 'avanzado',     type: 'Offshore',    latitude: 19.84,   longitude: -90.55,   description: 'Sonda de Campeche, zona de pesca industrial y deportiva.',          species: ['Marlín', 'Dorado', 'Atún', 'Peto'],                wikimedia: 'Campeche' },
+  { id: 'z35', name: 'Progreso — Costa Yucatán', level: 'principiante', type: 'Orilla',      latitude: 21.28,   longitude: -89.66,   description: 'Pesca desde el muelle y la costa de Yucatán.',                      species: ['Mero', 'Pargo', 'Pulpo'],                          wikimedia: 'Progreso_Yucatán' },
+  // ── QUINTANA ROO / CARIBE ───────────────────────────────────────────────────
+  { id: 'z36', name: 'Cancún — Caribe',          level: 'intermedio',   type: 'Offshore',    latitude: 21.16,   longitude: -86.8,    description: 'Pesca de altura en el Caribe mexicano.',                             species: ['Marlín', 'Pez vela', 'Dorado', 'Wahoo'],          wikimedia: 'Cancún' },
+  { id: 'z37', name: 'Cozumel — Arrecife',       level: 'intermedio',   type: 'Arrecife',    latitude: 20.5,    longitude: -86.95,   description: 'Arrecife Mesoamericano, pesca y buceo en Cozumel.',                 species: ['Pargo', 'Mero', 'Barracuda', 'Wahoo'],            wikimedia: 'Cozumel' },
+  { id: 'z38', name: 'Chetumal — Bahía',         level: 'principiante', type: 'Bahía',       latitude: 18.5,    longitude: -88.3,    description: 'Bahía de Chetumal con pesca de sábalo y robalo.',                   species: ['Sábalo', 'Robalo', 'Mojarra'],                     wikimedia: 'Chetumal' },
+  // ── CHIAPAS ─────────────────────────────────────────────────────────────────
+  { id: 'z39', name: 'Puerto Madero',            level: 'avanzado',     type: 'Offshore',    latitude: 14.72,   longitude: -92.42,   description: 'Puerto pesquero en Chiapas, excelente para pez vela.',              species: ['Pez vela', 'Marlín', 'Atún', 'Dorado'],            wikimedia: 'Chiapas' },
+  { id: 'z40', name: 'Laguna de Miramar',        level: 'principiante', type: 'Laguna',      latitude: 16.35,   longitude: -91.98,   description: 'Laguna selvática en Chiapas con pesca de agua dulce.',              species: ['Mojarra', 'Tenhuayaca', 'Robalo'],                 wikimedia: 'Chiapas' },
 ];
 
 type Zone = typeof ALL_ZONES[0];
@@ -173,9 +134,9 @@ function useZonePhoto(wikimedia: string) {
 }
 
 // ─── Mapa Leaflet + OSM ───────────────────────────────────────────────────────
-const MAP_CENTER_LAT = 17.62;
-const MAP_CENTER_LON = -101.60;
-const MAP_ZOOM       = 9;
+const MAP_CENTER_LAT = 20.0;
+const MAP_CENTER_LON = -100.5;
+const MAP_ZOOM       = 5;
 
 // ─── HTML del mapa con Leaflet-velocity para animaciones ──────────────────────
 // Datos de viento/corrientes desde Open-Meteo (gratis, sin key)
@@ -246,9 +207,29 @@ function buildLeafletHtml(
   <script>
     var map = L.map('map', { zoomControl:true }).setView([${centerLat},${centerLon}], ${zoom});
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Tile base: náutico para capas meteorológicas (muestra solo el mar), OSM para zonas
+    var osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap', maxZoom: 18,
-    }).addTo(map);
+    });
+    var cartoTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CARTO', maxZoom: 18,
+    });
+    var oceanTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri', maxZoom: 13,
+    });
+    var oceanRef = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Reference/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri', maxZoom: 13, opacity: 0.7,
+    });
+
+    // Para capas meteorológicas: usar mapa oceánico (sin relieve terrestre)
+    // Para zonas: usar OSM normal
+    var useOcean = ${isVelocityLayer || isWavesLayer ? 'true' : 'false'};
+    if (useOcean) {
+      oceanTiles.addTo(map);
+      oceanRef.addTo(map);
+    } else {
+      cartoTiles.addTo(map);
+    }
 
     ${isTempLayer ? tempTileLayer : ''}
     ${isWavesLayer ? `L.tileLayer('https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=439d4b804bc8187953eb36d2a8c26a02',{opacity:0.55,attribution:'© OWM'}).addTo(map);` : ''}
@@ -637,7 +618,7 @@ export default function MapScreen() {
         <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
           <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A' }}>Zonas de pesca</Text>
           <Text style={{ color: '#64748B', fontSize: 13, marginTop: 2 }}>
-            {userLocation ? `${filtered.length} zonas encontradas cerca de ti` : `${filtered.length} zonas disponibles`}
+            {userLocation ? `${filtered.length} zonas encontradas cerca de ti` : `${filtered.length} zonas en todo México`}
           </Text>
         </View>
 
@@ -650,7 +631,7 @@ export default function MapScreen() {
             zones={filtered}
             centerLat={mapCenterLat}
             centerLon={mapCenterLon}
-            zoom={userLocation ? 10 : MAP_ZOOM}
+            zoom={userLocation ? 8 : MAP_ZOOM}
             height={380}
             layer={activeLayer}
           />
