@@ -13,16 +13,43 @@ import { InfoBox } from '@/components/ui/InfoBox';
 
 // ─── Foto de especie desde Wikimedia ─────────────────────────────────────────
 const speciesPhotoCache: Record<string, string | null> = {};
+
+// Términos de búsqueda correctos para cada especie (evita páginas sin foto o con foto incorrecta)
+const SPECIES_WIKIMEDIA: Record<string, string> = {
+  'Pez vela':            'Indo-Pacific sailfish',
+  'Marlín azul':         'Atlantic blue marlin',
+  'Marlín rayado':       'Striped marlin Pacific',
+  'Marlín':              'Atlantic blue marlin',
+  'Dorado':              'Mahi-mahi',
+  'Atún aleta amarilla': 'Yellowfin tuna',
+  'Atún':                'Yellowfin tuna',
+  'Wahoo':               'Wahoo (fish)',
+  'Sierra':              'Pacific king mackerel',
+  'Jurel':               'Amberjack',
+  'Robalo':              'Common snook',
+  'Huachinango':         'Red snapper',
+  'Mojarra':             'Eucinostomus',
+  'Pargo':               'Lane snapper',
+  'Mero':                'Goliath grouper',
+  'Cabrilla':            'Spotted sand bass',
+  'Barracuda':           'Great barracuda',
+};
+
+function getSpeciesWikimediaTerm(species: string): string {
+  return SPECIES_WIKIMEDIA[species] ?? species + ' fish';
+}
+
 async function fetchSpeciesPhoto(species: string): Promise<string | null> {
-  if (species in speciesPhotoCache) return speciesPhotoCache[species];
+  const term = getSpeciesWikimediaTerm(species);
+  if (term in speciesPhotoCache) return speciesPhotoCache[term];
   try {
-    const res  = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(species)}&prop=pageimages&format=json&pithumbsize=500&origin=*`);
+    const res  = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(term)}&prop=pageimages&format=json&pithumbsize=600&origin=*`);
     const data = await res.json();
     const page = Object.values(data?.query?.pages ?? {})[0] as any;
     const url  = page?.thumbnail?.source ?? null;
-    speciesPhotoCache[species] = url;
+    speciesPhotoCache[term] = url;
     return url;
-  } catch { speciesPhotoCache[species] = null; return null; }
+  } catch { speciesPhotoCache[term] = null; return null; }
 }
 function useSpeciesPhoto(species: string) {
   const [photo, setPhoto] = useState<string | null>(null);
@@ -225,52 +252,57 @@ function CatchCard({ post, onDelete }: { post: CatchPost; onDelete?: () => void 
   const photo = useSpeciesPhoto(post.species);
   return (
     <CardBox>
-      {/* Foto de la especie */}
-      <View style={{ height: 140, borderRadius: 14, overflow: 'hidden', marginBottom: 12, backgroundColor: `${COLORS.ocean}15` }}>
+      {/* Foto de la especie — grande con gradiente igual que en Temporadas */}
+      <View style={{ height: 200, borderRadius: 14, overflow: 'hidden', marginBottom: 12, backgroundColor: `${COLORS.ocean}15` }}>
         {photo ? (
           <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <MaterialIcons name="set-meal" size={40} color={COLORS.ocean} />
+            <MaterialIcons name="set-meal" size={52} color={COLORS.ocean} />
           </View>
         )}
-        {/* Badge de especie sobre la foto */}
-        <View style={{ position: 'absolute', bottom: 8, left: 8, backgroundColor: 'rgba(15,23,42,0.75)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+        {/* Gradiente inferior */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 90,
+          backgroundColor: 'rgba(15,23,42,0)', }} />
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 90,
+          background: 'linear-gradient(transparent, rgba(15,23,42,0.85))' } as any} />
+        {/* Badge nivel/tipo */}
+        <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: COLORS.ocean, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
           <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>🐟 {post.species}</Text>
+        </View>
+        {/* Botón eliminar */}
+        {post.isMine && onDelete && (
+          <TouchableOpacity onPress={() => Alert.alert('¿Eliminar esta publicación?', 'Esta acción no se puede deshacer.', [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Eliminar', style: 'destructive', onPress: onDelete },
+          ])} style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(220,38,38,0.85)', borderRadius: 999, padding: 6 }}>
+            <MaterialIcons name="delete-outline" size={16} color="#fff" />
+          </TouchableOpacity>
+        )}
+        {/* Info sobre la foto */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12,
+          backgroundColor: 'rgba(15,23,42,0.65)', borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
+          <Text style={{ color: '#fff', fontWeight: '900', fontSize: 18, letterSpacing: -0.3 }}>{post.species}</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 }}>
+            {post.weightKg} kg · {post.zoneName}
+          </Text>
         </View>
       </View>
 
-      <View className="flex-row items-start justify-between">
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 16 }}>{post.species}</Text>
-          <Text style={{ color: '#0F172A99', fontSize: 13 }}>
-            {post.weightKg} kg · {post.zoneName}
-          </Text>
-          <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 2 }}>
-            {post.userName} · {post.catchDate}
-          </Text>
+      {/* Info adicional */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ width: 32, height: 32, borderRadius: 99, backgroundColor: `${COLORS.ocean}15`, alignItems: 'center', justifyContent: 'center' }}>
+          <MaterialIcons name="person" size={18} color={COLORS.ocean} />
         </View>
-        {post.isMine && onDelete && (
-          <TouchableOpacity
-            onPress={() =>
-              Alert.alert(
-                '¿Eliminar esta publicación?',
-                'Esta acción no se puede deshacer.',
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Eliminar', style: 'destructive', onPress: onDelete },
-                ],
-              )
-            }
-          >
-            <MaterialIcons name="delete-outline" size={22} color={COLORS.danger} />
-          </TouchableOpacity>
-        )}
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontWeight: '700', color: '#0F172A', fontSize: 13 }}>{post.userName}</Text>
+          <Text style={{ color: '#94A3B8', fontSize: 11 }}>{post.catchDate}</Text>
+        </View>
       </View>
 
       {post.comment ? (
-        <Text style={{ color: '#0F172A99', fontSize: 13, marginTop: 8, lineHeight: 18 }}>
-          {post.comment}
+        <Text style={{ color: '#374151', fontSize: 13, marginTop: 10, lineHeight: 19, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+          💬 {post.comment}
         </Text>
       ) : null}
     </CardBox>
