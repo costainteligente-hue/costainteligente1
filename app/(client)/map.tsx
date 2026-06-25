@@ -102,35 +102,27 @@ function fmtKm(km: number): string {
 }
 
 // ─── Foto local de zona ───────────────────────────────────────────────────────
-// Usa imágenes locales en assets/images/zones/ en lugar de Wikimedia
-const photoCache: Record<string, string | null> = {};
-
-async function fetchWikimediaPhoto(searchTerm: string): Promise<string | null> {
-  if (searchTerm in photoCache) return photoCache[searchTerm];
+// Para zonas con foto local usa ZONE_ID_TO_PHOTO, para las demás usa Wikimedia
+const zoneWikiCache: Record<string, string | null> = {};
+async function fetchZoneWikiPhoto(wikimedia: string): Promise<string | null> {
+  if (wikimedia in zoneWikiCache) return zoneWikiCache[wikimedia];
   try {
-    const url =
-      `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(searchTerm)}` +
-      `&prop=pageimages&format=json&pithumbsize=600&origin=*`;
-    const res  = await fetch(url);
+    const res  = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(wikimedia)}&prop=pageimages&format=json&pithumbsize=600&origin=*`);
     const data = await res.json();
-    const pages = data?.query?.pages ?? {};
-    const page  = Object.values(pages)[0] as any;
-    const thumb = page?.thumbnail?.source ?? null;
-    photoCache[searchTerm] = thumb;
-    return thumb;
-  } catch {
-    photoCache[searchTerm] = null;
-    return null;
-  }
+    const page = Object.values(data?.query?.pages ?? {})[0] as any;
+    zoneWikiCache[wikimedia] = page?.thumbnail?.source ?? null;
+    return zoneWikiCache[wikimedia];
+  } catch { zoneWikiCache[wikimedia] = null; return null; }
 }
 
-// ─── Hook: foto de zona ───────────────────────────────────────────────────────
-function useZonePhoto(wikimedia: string) {
-  const [photo, setPhoto] = useState<string | null>(null);
+function useZonePhoto(zoneId: string, wikimedia: string) {
+  const localPhoto = ZONE_ID_TO_PHOTO[zoneId] ?? null;
+  const [wikiPhoto, setWikiPhoto] = useState<string | null>(null);
   useEffect(() => {
-    fetchWikimediaPhoto(wikimedia).then(setPhoto);
-  }, [wikimedia]);
-  return photo;
+    if (!localPhoto) { fetchZoneWikiPhoto(wikimedia).then(setWikiPhoto); }
+  }, [zoneId, wikimedia, localPhoto]);
+  // Prioriza foto local, si no tiene usa Wikimedia
+  return localPhoto ?? wikiPhoto;
 }
 
 // ─── Mapa Leaflet + OSM ───────────────────────────────────────────────────────
@@ -363,8 +355,8 @@ function ZoneMap({ zones, centerLat, centerLon, zoom = MAP_ZOOM, height = 380, l
 }
 
 // ─── Foto de zona ─────────────────────────────────────────────────────────────
-function ZonePhoto({ zoneId, style }: { zoneId: string; style?: any }) {
-  const photo = ZONE_ID_TO_PHOTO[zoneId] ?? null;
+function ZonePhoto({ zoneId, wikimedia, style }: { zoneId: string; wikimedia: string; style?: any }) {
+  const photo = useZonePhoto(zoneId, wikimedia);
   if (!photo) {
     return (
       <View style={[{ backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }, style]}>
@@ -372,7 +364,7 @@ function ZonePhoto({ zoneId, style }: { zoneId: string; style?: any }) {
       </View>
     );
   }
-  return <Image source={photo} style={style} resizeMode="cover" />;
+  return <Image source={typeof photo === 'string' ? { uri: photo } : photo} style={style} resizeMode="cover" />;
 }
 
 // ─── Modal detalle de zona ────────────────────────────────────────────────────
@@ -392,7 +384,7 @@ function ZoneDetailModal({ zone, onClose, favorited, onFavorite, distanceKm }: {
 
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
           {/* Foto de la playa */}
-          <ZonePhoto zoneId={zone.id} style={{ width: '100%', height: 200 }} />
+          <ZonePhoto zoneId={zone.id} wikimedia={zone.wikimedia} style={{ width: '100%', height: 200 }} />
 
           <View style={{ padding: 16 }}>
             {/* Badges */}
@@ -469,7 +461,7 @@ function ZoneDetailModal({ zone, onClose, favorited, onFavorite, distanceKm }: {
 function ZoneCard({ zone, distanceKm, favorited, onPress, onFavorite }: {
   zone: Zone; distanceKm?: number; favorited: boolean; onPress: () => void; onFavorite: () => void;
 }) {
-  const photo = ZONE_ID_TO_PHOTO[zone.id] ?? null;
+  const photo = useZonePhoto(zone.id, zone.wikimedia);
   const color = LEVEL_COLORS[zone.level];
   return (
     <TouchableOpacity onPress={onPress} style={{ marginBottom: 12 }}>
@@ -477,7 +469,7 @@ function ZoneCard({ zone, distanceKm, favorited, onPress, onFavorite }: {
         {/* Foto */}
         <View style={{ height: 130, backgroundColor: '#E2E8F0' }}>
           {photo
-            ? <Image source={photo} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            ? <Image source={typeof photo === 'string' ? { uri: photo } : photo} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                 <MaterialIcons name="landscape" size={36} color="#94A3B8" />
               </View>

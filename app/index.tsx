@@ -52,10 +52,8 @@ export default function Index() {
   if (role === 'admin') return <Redirect href="/(admin)" />;
 
   if (role === 'provider') {
-    if (providerStatus === 'approved') return <Redirect href="/(provider)" />;
-    if (providerStatus === 'rejected') return <Redirect href="/auth/pending-approval" />;
-    // pending o null → pantalla de espera
-    return <Redirect href="/auth/pending-approval" />;
+    // Siempre entra al dashboard — el banner de pendiente aparece adentro
+    return <Redirect href="/(provider)" />;
   }
 
   return <Redirect href="/(client)" />;

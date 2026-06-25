@@ -133,7 +133,7 @@ function ProviderDetailModal({ provider, onApprove, onReject, onClose }: {
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 export default function VerificationScreen() {
   const qc = useQueryClient();
-  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin_providers'], queryFn: fetchProviders, staleTime: 1000 * 60 * 2 });
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin_providers'], queryFn: fetchProviders, staleTime: 0, refetchInterval: 4000 });
   const mutation = useMutation({
     mutationFn: mutateProviderStatus,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin_providers'] }),
