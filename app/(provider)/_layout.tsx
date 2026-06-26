@@ -77,6 +77,7 @@ export default function ProviderLayout() {
       <Tabs.Screen name="chat/general" options={{ href: null, title: 'Mensajes' }} />
       <Tabs.Screen name="reviews" options={{ href: null, title: 'Reseñas' }} />
       <Tabs.Screen name="promotions" options={{ href: null, title: 'Promociones' }} />
+      <Tabs.Screen name="service-form" options={{ href: null, title: 'Registrar servicio' }} />
     </Tabs>
   );
 }

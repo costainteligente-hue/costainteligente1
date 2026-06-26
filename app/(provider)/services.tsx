@@ -6,7 +6,6 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useProviderStore } from '@/stores/providerStore';
 import { useAuthStore } from '@/stores/authStore';
 import { SERVICE_DEFS, COLORS, formatCurrency, getServiceDef } from '@/lib/constants';
 import { BusinessRecord, ServiceModuleId, ScheduleSlot, CatalogItem, ServiceRouteOption } from '@/types';
@@ -150,7 +149,7 @@ function ServiceRegistryList({
         subtitle="Administra registros verificados."
         actionLabel={isApproved ? addLabel() : undefined}
         actionIcon="add"
-        onAction={isApproved ? () => setShowForm(true) : undefined}
+        onAction={isApproved ? () => router.push(`/(provider)/service-form?serviceId=${serviceId}` as any) : undefined}
         actionColor={def.color}
       />
       <View style={{ height: 10 }} />
