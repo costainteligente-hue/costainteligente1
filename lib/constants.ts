@@ -157,3 +157,89 @@ export const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
+
+// ─── Categorías de servicios del directorio costero ──────────────────────────
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  icon: string;       // MaterialIcons name
+  color: string;
+  description: string;
+  emoji: string;
+  moduleTypes: string[];   // IDs de SERVICE_DEFS que pertenecen a esta categoría
+}
+
+export const SERVICE_CATEGORIES: ServiceCategory[] = [
+  {
+    id: 'pesca',
+    name: 'Pesca',
+    icon: 'directions-boat',
+    color: COLORS.ocean,
+    description: 'Lanchas, guías, pesca deportiva y renta de embarcaciones.',
+    emoji: '🎣',
+    moduleTypes: ['boat', 'guide', 'sport', 'rental'],
+  },
+  {
+    id: 'restaurantes',
+    name: 'Restaurantes',
+    icon: 'restaurant',
+    color: COLORS.brown,
+    description: 'Mariscos frescos, cevicherías y cocina costera.',
+    emoji: '🍽️',
+    moduleTypes: ['restaurant'],
+  },
+  {
+    id: 'tiendas',
+    name: 'Tiendas y equipo',
+    icon: 'storefront',
+    color: COLORS.purple,
+    description: 'Tiendas de pesca, accesorios y equipo náutico.',
+    emoji: '🏪',
+    moduleTypes: ['store'],
+  },
+  {
+    id: 'pescaderias',
+    name: 'Pescaderías',
+    icon: 'set-meal',
+    color: '#118AB2',
+    description: 'Pescado fresco, mariscos y productos del mar.',
+    emoji: '🐟',
+    moduleTypes: ['fishMarket'],
+  },
+  {
+    id: 'transporte',
+    name: 'Transporte',
+    icon: 'airport-shuttle',
+    color: COLORS.olive,
+    description: 'Traslados, tours y transporte turístico.',
+    emoji: '🚌',
+    moduleTypes: ['transport'],
+  },
+  {
+    id: 'insumos',
+    name: 'Insumos',
+    icon: 'inventory',
+    color: '#D97706',
+    description: 'Hielo, carnada, gasolina, aceites y refacciones.',
+    emoji: '⛽',
+    moduleTypes: ['insumos'],
+  },
+  {
+    id: 'hospedaje',
+    name: 'Hospedaje',
+    icon: 'hotel',
+    color: '#0891B2',
+    description: 'Hoteles, cabañas y alojamiento cerca del mar.',
+    emoji: '🏨',
+    moduleTypes: ['hospedaje'],
+  },
+  {
+    id: 'emergencias',
+    name: 'Emergencias',
+    icon: 'local-hospital',
+    color: COLORS.danger,
+    description: 'Servicios médicos, farmacias y emergencias.',
+    emoji: '🏥',
+    moduleTypes: ['emergencias'],
+  },
+];
