@@ -80,6 +80,7 @@ export default function ProviderLayout() {
       <Tabs.Screen name="route-manager" options={{ href: null, title: 'Recorridos' }} />
       <Tabs.Screen name="catalog-manager" options={{ href: null, title: 'Catálogo' }} />
       <Tabs.Screen name="gallery-manager" options={{ href: null, title: 'Galería' }} />
+      <Tabs.Screen name="support" options={{ href: null, title: 'Soporte' }} />
     </Tabs>
   );
 }
