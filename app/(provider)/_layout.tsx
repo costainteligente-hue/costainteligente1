@@ -77,7 +77,11 @@ export default function ProviderLayout() {
       <Tabs.Screen name="chat/general" options={{ href: null, title: 'Mensajes' }} />
       <Tabs.Screen name="reviews" options={{ href: null, title: 'Reseñas' }} />
       <Tabs.Screen name="promotions" options={{ href: null, title: 'Promociones' }} />
+      <Tabs.Screen name="verification" options={{ href: null, title: 'Verificación' }} />
       <Tabs.Screen name="service-form" options={{ href: null, title: 'Registrar servicio' }} />
+      <Tabs.Screen name="route-manager" options={{ href: null, title: 'Recorridos' }} />
+      <Tabs.Screen name="catalog-manager" options={{ href: null, title: 'Catálogo' }} />
+      <Tabs.Screen name="gallery-manager" options={{ href: null, title: 'Galería' }} />
     </Tabs>
   );
 }

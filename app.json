@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "mx.costainteligente.app",
+      "bundleIdentifier": "com.costainteligente.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para el mapa y el módulo SOS de emergencia.",
         "NSLocationAlwaysUsageDescription": "El módulo SOS requiere acceso a tu ubicación para emergencias en el mar.",
@@ -23,7 +23,7 @@
       }
     },
     "android": {
-      "package": "mx.costainteligente.app",
+      "package": "com.costainteligente.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/Logo_No_LETRAS.jpg",
         "backgroundColor": "#F0F8FF"

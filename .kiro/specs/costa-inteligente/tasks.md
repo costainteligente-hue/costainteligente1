@@ -13,7 +13,7 @@ Plan de implementación incremental en 4 fases para la app móvil Costa Intelige
 ### Fase 1 — MVP: Auth, Mapa, Temporadas, SOS, Dashboard, Admin Básico
 
 - [ ] 1. Inicializar proyecto y estructura base
-  - [ ] 1.1 Crear proyecto Expo con `create-expo-app` usando el template blank TypeScript, configurar `app.json` con `scheme`, `bundleIdentifier` y `package` de Costa Inteligente, instalar dependencias core: `expo-router`, `nativewind`, `tailwindcss`, `@supabase/supabase-js`, `@tanstack/react-query`, `zustand`, `zod`, `react-native-url-polyfill`
+  - [x] 1.1 Crear proyecto Expo con `create-expo-app` usando el template blank TypeScript, configurar `app.json` con `scheme`, `bundleIdentifier` y `package` de Costa Inteligente, instalar dependencias core: `expo-router`, `nativewind`, `tailwindcss`, `@supabase/supabase-js`, `@tanstack/react-query`, `zustand`, `zod`, `react-native-url-polyfill`
     - Configurar `babel.config.js` con preset NativeWind y el plugin de Expo Router
     - Crear `.env` local y `.env.example`; agregar `.env` a `.gitignore`
     - _Requerimientos: 24.2, 25.1_

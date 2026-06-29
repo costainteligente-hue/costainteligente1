@@ -1,233 +1,63 @@
+/**
+ * PromotionsScreen — Proveedor
+ * Campañas, descuentos y promociones visibles para usuarios
+ */
 import React, { useState } from 'react';
 import {
   ScrollView, View, Text, TouchableOpacity, Modal,
-  TextInput, KeyboardAvoidingView, Platform, Alert,
+  TextInput, KeyboardAvoidingView, Platform, Alert, Switch,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Promotion } from '@/types';
-import { COLORS, SERVICE_DEFS } from '@/lib/constants';
-import { useProviderStore } from '@/stores/providerStore';
+import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { HeaderCard } from '@/components/ui/HeaderCard';
-import { StatusPill } from '@/components/ui/StatusPill';
-import { InfoBox } from '@/components/ui/InfoBox';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { InfoBox } from '@/components/ui/InfoBox';
 
-const INITIAL_PROMOS: Promotion[] = [
-  {
-    id: 'promo-1',
-    title: 'Descuento de temporada',
-    description: '10% de descuento en salidas de pesca durante julio.',
-    discountPercent: 10,
-    serviceName: 'Embarcación verificada',
-    startDate: '01/07/2026',
-    endDate: '31/07/2026',
-    status: 'active',
-  },
+interface Promo { id: string; title: string; discount: string; conditions: string; active: boolean; }
+
+const SEED_PROMOS: Promo[] = [
+  { id: 'pr1', title: 'Temporada alta julio-agosto', discount: '15%', conditions: 'Válido para salidas de más de 4 horas. No acumulable.', active: true },
+  { id: 'pr2', title: 'Grupo de 6+ personas', discount: '10%', conditions: 'Aplica en reservas grupales confirmadas.', active: false },
 ];
 
-function PromoForm({
-  onSave,
-  onCancel,
-}: {
-  onSave: (p: Promotion) => void;
-  onCancel: () => void;
-}) {
-  const { records } = useProviderStore();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [discount, setDiscount] = useState('');
-  const [serviceName, setServiceName] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const allRecords = Object.values(records).flat();
-
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (title.trim().length < 3) e.title = 'El título debe tener al menos 3 caracteres.';
-    if (title.trim().length > 100) e.title = 'Máximo 100 caracteres.';
-    if (description.trim().length < 10) e.description = 'La descripción debe tener al menos 10 caracteres.';
-    const d = parseInt(discount, 10);
-    if (isNaN(d) || d < 1 || d > 100) e.discount = 'Ingresa un descuento entre 1 y 100.';
-    if (!serviceName) e.serviceName = 'Selecciona un servicio.';
-    if (!startDate) e.startDate = 'Ingresa la fecha de inicio.';
-    if (!endDate) e.endDate = 'Ingresa la fecha de fin.';
-    return e;
-  };
-
-  const handleSave = () => {
-    const e = validate();
-    if (Object.keys(e).length > 0) { setErrors(e); return; }
-    onSave({
-      id: `promo-${Date.now()}`,
-      title: title.trim(),
-      description: description.trim(),
-      discountPercent: parseInt(discount, 10),
-      serviceName,
-      startDate,
-      endDate,
-      status: 'active',
-    });
-  };
+function PromoModal({ promo, onSave, onClose }: { promo?: Promo; onSave: (p: Omit<Promo, 'id' | 'active'>) => void; onClose: () => void }) {
+  const [title, setTitle]       = useState(promo?.title ?? '');
+  const [discount, setDiscount] = useState(promo?.discount?.replace('%', '') ?? '');
+  const [conditions, setConditions] = useState(promo?.conditions ?? '');
 
   return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onCancel}>
+    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-          <View className="flex-row items-center justify-between px-4 pt-4 pb-2">
-            <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>Nueva promoción</Text>
-            <TouchableOpacity onPress={onCancel}>
-              <MaterialIcons name="close" size={24} color="#0F172A" />
-            </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>{promo ? 'Editar promoción' : 'Nueva promoción'}</Text>
+            <TouchableOpacity onPress={onClose}><MaterialIcons name="close" size={24} color="#0F172A" /></TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
             <CardBox>
-              {/* Title */}
-              <View style={{ marginBottom: 12 }}>
-                <Text style={{ fontWeight: '700', color: '#0F172A', marginBottom: 6, fontSize: 13 }}>
-                  Título (3–100 caracteres)
-                </Text>
-                <TextInput
-                  value={title}
-                  onChangeText={setTitle}
-                  placeholder="Ej. Descuento de temporada"
-                  placeholderTextColor="#94A3B8"
-                  style={{
-                    backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1,
-                    borderColor: errors.title ? COLORS.danger : '#E2E8F0',
-                    paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: '#0F172A',
-                  }}
-                />
-                {errors.title ? <Text style={{ color: COLORS.danger, fontSize: 12, marginTop: 3 }}>{errors.title}</Text> : null}
-              </View>
-
-              {/* Description */}
-              <View style={{ marginBottom: 12 }}>
-                <Text style={{ fontWeight: '700', color: '#0F172A', marginBottom: 6, fontSize: 13 }}>
-                  Descripción (10–300 caracteres)
-                </Text>
-                <TextInput
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  numberOfLines={3}
-                  placeholder="Describe las condiciones de la promoción..."
-                  placeholderTextColor="#94A3B8"
-                  style={{
-                    backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1,
-                    borderColor: errors.description ? COLORS.danger : '#E2E8F0',
-                    paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: '#0F172A',
-                    textAlignVertical: 'top', minHeight: 80,
-                  }}
-                />
-                {errors.description ? <Text style={{ color: COLORS.danger, fontSize: 12, marginTop: 3 }}>{errors.description}</Text> : null}
-              </View>
-
-              {/* Discount */}
-              <View style={{ marginBottom: 12 }}>
-                <Text style={{ fontWeight: '700', color: '#0F172A', marginBottom: 6, fontSize: 13 }}>
-                  Descuento (1–100%)
-                </Text>
-                <TextInput
-                  value={discount}
-                  onChangeText={setDiscount}
-                  keyboardType="number-pad"
-                  placeholder="Ej. 15"
-                  placeholderTextColor="#94A3B8"
-                  style={{
-                    backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1,
-                    borderColor: errors.discount ? COLORS.danger : '#E2E8F0',
-                    paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: '#0F172A',
-                  }}
-                />
-                {errors.discount ? <Text style={{ color: COLORS.danger, fontSize: 12, marginTop: 3 }}>{errors.discount}</Text> : null}
-              </View>
-
-              {/* Service selector */}
-              <View style={{ marginBottom: 12 }}>
-                <Text style={{ fontWeight: '700', color: '#0F172A', marginBottom: 6, fontSize: 13 }}>
-                  Servicio al que aplica
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View className="flex-row gap-2">
-                    {allRecords.map((r) => (
-                      <TouchableOpacity
-                        key={r.id}
-                        onPress={() => setServiceName(r.title)}
-                        style={{
-                          paddingHorizontal: 14,
-                          paddingVertical: 8,
-                          borderRadius: 999,
-                          backgroundColor: serviceName === r.title ? COLORS.ocean : '#F1F5F9',
-                          borderWidth: 1,
-                          borderColor: serviceName === r.title ? COLORS.ocean : '#E2E8F0',
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontWeight: '700',
-                            color: serviceName === r.title ? '#fff' : '#0F172A',
-                            fontSize: 13,
-                          }}
-                        >
-                          {r.title}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
-                {errors.serviceName ? <Text style={{ color: COLORS.danger, fontSize: 12, marginTop: 3 }}>{errors.serviceName}</Text> : null}
-              </View>
-
-              {/* Dates */}
-              <View className="flex-row gap-3">
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '700', color: '#0F172A', marginBottom: 6, fontSize: 13 }}>Fecha inicio</Text>
-                  <TextInput
-                    value={startDate}
-                    onChangeText={setStartDate}
-                    placeholder="DD/MM/AAAA"
-                    placeholderTextColor="#94A3B8"
-                    style={{
-                      backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1,
-                      borderColor: errors.startDate ? COLORS.danger : '#E2E8F0',
-                      paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: '#0F172A',
-                    }}
-                  />
+              {[
+                { label: 'Nombre o descripción', value: title, set: setTitle, placeholder: 'Ej. Temporada alta julio-agosto' },
+                { label: 'Descuento (%)', value: discount, set: setDiscount, placeholder: 'Ej. 15', keyboard: 'numeric' as const },
+                { label: 'Condiciones', value: conditions, set: setConditions, placeholder: 'Ej. No acumulable. Válido en salidas de 4h+', multiline: true },
+              ].map((f) => (
+                <View key={f.label} style={{ marginBottom: 14 }}>
+                  <Text style={{ fontWeight: '700', color: '#0F172A', fontSize: 13, marginBottom: 6 }}>{f.label}</Text>
+                  <TextInput value={f.value} onChangeText={f.set} placeholder={f.placeholder} placeholderTextColor="#94A3B8"
+                    keyboardType={f.keyboard ?? 'default'} multiline={f.multiline}
+                    style={{ backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: '#0F172A', textAlignVertical: f.multiline ? 'top' : 'center', minHeight: f.multiline ? 80 : undefined }} />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '700', color: '#0F172A', marginBottom: 6, fontSize: 13 }}>Fecha fin</Text>
-                  <TextInput
-                    value={endDate}
-                    onChangeText={setEndDate}
-                    placeholder="DD/MM/AAAA"
-                    placeholderTextColor="#94A3B8"
-                    style={{
-                      backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1,
-                      borderColor: errors.endDate ? COLORS.danger : '#E2E8F0',
-                      paddingHorizontal: 12, paddingVertical: 11, fontSize: 14, color: '#0F172A',
-                    }}
-                  />
-                </View>
-              </View>
+              ))}
             </CardBox>
-
             <TouchableOpacity
-              onPress={handleSave}
-              style={{
-                backgroundColor: COLORS.purple,
-                borderRadius: 14,
-                padding: 14,
-                alignItems: 'center',
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: 8,
+              onPress={() => {
+                if (!title.trim() || !discount.trim()) { Alert.alert('Agrega nombre y descuento.'); return; }
+                onSave({ title: title.trim(), discount: `${discount.trim()}%`, conditions: conditions.trim() || 'Sin condiciones.' });
+                onClose();
               }}
-            >
-              <MaterialIcons name="local-offer" size={18} color="#fff" />
+              style={{ backgroundColor: COLORS.purple, borderRadius: 14, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8 }}>
+              <MaterialIcons name="check" size={18} color="#fff" />
               <Text style={{ color: '#fff', fontWeight: '800' }}>Guardar promoción</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -238,108 +68,78 @@ function PromoForm({
 }
 
 export default function PromotionsScreen() {
-  const [promos, setPromos] = useState<Promotion[]>(INITIAL_PROMOS);
-  const [showForm, setShowForm] = useState(false);
+  const [promos, setPromos]     = useState<Promo[]>(SEED_PROMOS);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing]   = useState<Promo | undefined>(undefined);
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Eliminar promoción', '¿Deseas eliminar esta promoción?', [
+  const add = (data: Omit<Promo, 'id' | 'active'>) =>
+    setPromos((prev) => [...prev, { ...data, id: `pr${Date.now()}`, active: true }]);
+
+  const update = (id: string, data: Omit<Promo, 'id' | 'active'>) =>
+    setPromos((prev) => prev.map((p) => p.id === id ? { ...p, ...data } : p));
+
+  const toggle = (id: string) =>
+    setPromos((prev) => prev.map((p) => p.id === id ? { ...p, active: !p.active } : p));
+
+  const remove = (id: string) =>
+    Alert.alert('Eliminar promoción', '¿Eliminar esta promoción?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => setPromos((p) => p.filter((x) => x.id !== id)) },
+      { text: 'Eliminar', style: 'destructive', onPress: () => setPromos((prev) => prev.filter((p) => p.id !== id)) },
     ]);
-  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }} edges={['top']}>
-      {showForm && (
-        <PromoForm
-          onSave={(p) => { setPromos((prev) => [...prev, p]); setShowForm(false); }}
-          onCancel={() => setShowForm(false)}
-        />
+      {showModal && (
+        <PromoModal promo={editing} onSave={(d) => editing ? update(editing.id, d) : add(d)} onClose={() => { setShowModal(false); setEditing(undefined); }} />
       )}
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
-        <HeaderCard
-          title="Promociones"
-          subtitle="Crea descuentos y paquetes por temporada para atraer más clientes."
-          icon="local-offer"
-          color={COLORS.purple}
-        />
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        <HeaderCard title="Promociones" subtitle="Campañas por servicio con fecha, descuento y condiciones." icon="local-offer" color={COLORS.purple} />
 
-        <TouchableOpacity
-          onPress={() => setShowForm(true)}
-          style={{
-            backgroundColor: COLORS.purple,
-            borderRadius: 14,
-            padding: 14,
-            alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            gap: 8,
-            marginBottom: 16,
-          }}
-        >
+        <TouchableOpacity onPress={() => { setEditing(undefined); setShowModal(true); }}
+          style={{ backgroundColor: COLORS.purple, borderRadius: 14, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <MaterialIcons name="add" size={20} color="#fff" />
           <Text style={{ color: '#fff', fontWeight: '800' }}>Crear promoción</Text>
         </TouchableOpacity>
 
         {promos.length === 0 ? (
-          <EmptyState
-            icon="local-offer"
-            title="Sin promociones"
-            message="Crea tu primera promoción para atraer más clientes."
-            buttonLabel="Crear promoción"
-            onPress={() => setShowForm(true)}
-          />
+          <EmptyState icon="local-offer" title="Sin promociones" message="Agrega descuentos o campañas visibles para usuarios." buttonLabel="Crear promoción" onPress={() => setShowModal(true)} />
         ) : (
-          promos.map((promo) => (
-            <CardBox key={promo.id}>
-              <View className="flex-row items-start gap-3">
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 99,
-                    backgroundColor: `${COLORS.purple}20`,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <MaterialIcons name="local-offer" size={22} color={COLORS.purple} />
+          promos.map((p) => (
+            <CardBox key={p.id}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: p.active ? `${COLORS.purple}15` : '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialIcons name="local-offer" size={22} color={p.active ? COLORS.purple : '#94A3B8'} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>
-                    {promo.title}
-                  </Text>
-                  <Text style={{ color: '#0F172A99', fontSize: 13 }} numberOfLines={2}>
-                    {promo.description}
-                  </Text>
-                  <View className="flex-row flex-wrap gap-2 mt-2">
-                    <View
-                      style={{
-                        backgroundColor: `${COLORS.purple}15`,
-                        borderRadius: 999,
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                      }}
-                    >
-                      <Text style={{ color: COLORS.purple, fontWeight: '800', fontSize: 12 }}>
-                        {promo.discountPercent}% OFF
-                      </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 14, flex: 1 }}>{p.title}</Text>
+                    <View style={{ backgroundColor: `${COLORS.success}15`, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+                      <Text style={{ color: COLORS.success, fontWeight: '900', fontSize: 13 }}>{p.discount}</Text>
                     </View>
-                    <StatusPill status={promo.status === 'active' ? 'Activo' : 'Vencido'} />
                   </View>
-                  <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 4 }}>
-                    {promo.serviceName} · {promo.startDate} – {promo.endDate}
+                  <Text style={{ color: '#64748B', fontSize: 12 }}>{p.conditions}</Text>
+                  <Text style={{ color: p.active ? COLORS.success : '#94A3B8', fontSize: 11, fontWeight: '700', marginTop: 4 }}>
+                    {p.active ? '✓ Activa — visible cuando el servicio esté publicado' : 'Pausada'}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => handleDelete(promo.id)}>
-                  <MaterialIcons name="delete-outline" size={22} color={COLORS.danger} />
+              </View>
+              <View style={{ height: 1, backgroundColor: '#E2E8F0', marginVertical: 10 }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Switch value={p.active} onValueChange={() => toggle(p.id)}
+                  trackColor={{ false: '#E2E8F0', true: `${COLORS.purple}50` }}
+                  thumbColor={p.active ? COLORS.purple : '#fff'} />
+                <Text style={{ color: '#64748B', fontSize: 12, flex: 1 }}>{p.active ? 'Activa' : 'Pausada'}</Text>
+                <TouchableOpacity onPress={() => { setEditing(p); setShowModal(true); }} style={{ padding: 8 }}>
+                  <MaterialIcons name="edit" size={18} color={COLORS.ocean} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => remove(p.id)} style={{ padding: 8 }}>
+                  <MaterialIcons name="delete-outline" size={18} color={COLORS.danger} />
                 </TouchableOpacity>
               </View>
             </CardBox>
           ))
         )}
-
-        <InfoBox text="Las promociones activas se muestran al cliente con el precio original tachado y el precio con descuento aplicado." />
+        <InfoBox text="Las promociones activas se muestran en el servicio cuando administración lo haya aceptado y esté visible para usuarios." />
       </ScrollView>
     </SafeAreaView>
   );
