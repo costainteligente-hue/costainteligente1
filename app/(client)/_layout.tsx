@@ -6,6 +6,7 @@ export default function ClientLayout() {
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: COLORS.ocean,
         tabBarInactiveTintColor: '#64748B',
         tabBarStyle: {
@@ -15,9 +16,6 @@ export default function ClientLayout() {
           paddingBottom: 10,
         },
         tabBarLabelStyle: { fontWeight: '700', fontSize: 11 },
-        headerStyle: { backgroundColor: '#F8FAFC' },
-        headerTitleStyle: { fontWeight: '800', fontSize: 18, color: '#0F172A' },
-        headerShadowVisible: false,
       }}
     >
       <Tabs.Screen

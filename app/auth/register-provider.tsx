@@ -1,21 +1,25 @@
 /**
- * RegisterProviderScreen — Costa Inteligente
+ * RegisterProviderScreen — Flujo multi-paso
+ * Paso 1: Datos del negocio
+ * Paso 2: Selección de servicios que ofrece
+ * Paso 3: Foto principal del negocio + descripción
  */
-
 import React, { useState } from 'react';
 import {
   ScrollView, View, Text, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { signUp } from '@/lib/services/auth.service';
 import { useAuthStore } from '@/stores/authStore';
-import { COLORS } from '@/lib/constants';
+import { COLORS, SERVICE_DEFS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { InfoBox } from '@/components/ui/InfoBox';
+import type { ServiceModuleId } from '@/types';
 
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 interface FormState {
   email: string;
   password: string;
@@ -24,58 +28,44 @@ interface FormState {
   phone: string;
   address: string;
 }
+type Errors = Partial<FormState> & { general?: string };
 
-interface Errors extends Partial<FormState> {}
-
+// ─── Validación paso 1 ────────────────────────────────────────────────────────
 function validate(form: FormState): Errors {
-  const errors: Errors = {};
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const rfcRegex = /^[A-Z&]{3,4}[0-9]{6}[A-Z0-9]{2,3}$/;
-
-  if (!form.email.trim()) errors.email = 'El correo es obligatorio.';
-  else if (!emailRegex.test(form.email.trim())) errors.email = 'Ingresa un correo válido.';
-  if (form.password.length < 8) errors.password = 'La contraseña debe tener mínimo 8 caracteres.';
-  if (form.businessName.trim().length < 3) errors.businessName = 'El nombre debe tener al menos 3 caracteres.';
-  if (form.businessName.trim().length > 100) errors.businessName = 'Máximo 100 caracteres.';
-  if (!rfcRegex.test(form.rfc.toUpperCase())) errors.rfc = 'RFC inválido. Ej: XAXX010101000';
-  if (!/^\d{10}$/.test(form.phone)) errors.phone = 'El teléfono debe tener exactamente 10 dígitos.';
-  if (form.address.trim().length < 10) errors.address = 'La dirección debe tener al menos 10 caracteres.';
-  if (form.address.trim().length > 200) errors.address = 'Máximo 200 caracteres.';
-  return errors;
+  const e: Errors = {};
+  const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const rfcRx   = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{2,3}$/;
+  if (!form.email.trim())                        e.email        = 'El correo es obligatorio.';
+  else if (!emailRx.test(form.email.trim()))     e.email        = 'Correo inválido.';
+  if (form.password.length < 8)                  e.password     = 'Mínimo 8 caracteres.';
+  if (form.businessName.trim().length < 3)       e.businessName = 'Mínimo 3 caracteres.';
+  if (!rfcRx.test(form.rfc.toUpperCase().trim())) e.rfc         = 'RFC inválido. Ej: XAXX010101000';
+  if (!/^\d{10}$/.test(form.phone))             e.phone        = '10 dígitos exactos.';
+  if (form.address.trim().length < 10)          e.address      = 'Dirección muy corta.';
+  return e;
 }
 
-function Field({
-  label, value, onChangeText, error, placeholder, keyboardType, secure, autoCapitalize,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (v: string) => void;
-  error?: string;
-  placeholder?: string;
+// ─── Campo reutilizable ───────────────────────────────────────────────────────
+function Field({ label, value, onChangeText, error, placeholder, keyboardType, secure, autoCapitalize, required }: {
+  label: string; value: string; onChangeText: (v: string) => void;
+  error?: string; placeholder?: string;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
-  secure?: boolean;
-  autoCapitalize?: 'none' | 'characters' | 'words';
+  secure?: boolean; autoCapitalize?: 'none' | 'characters' | 'words';
+  required?: boolean;
 }) {
   return (
     <View style={{ marginBottom: 14 }}>
-      <Text style={{ fontWeight: '700', color: '#0F172A', marginBottom: 6, fontSize: 13 }}>{label}</Text>
+      <Text style={{ fontWeight: '700', color: '#0F172A', marginBottom: 6, fontSize: 13 }}>
+        {label}{required && <Text style={{ color: COLORS.danger }}> *</Text>}
+      </Text>
       <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#94A3B8"
-        keyboardType={keyboardType ?? 'default'}
-        secureTextEntry={secure}
-        autoCapitalize={autoCapitalize ?? 'words'}
+        value={value} onChangeText={onChangeText} placeholder={placeholder}
+        placeholderTextColor="#94A3B8" keyboardType={keyboardType ?? 'default'}
+        secureTextEntry={secure} autoCapitalize={autoCapitalize ?? 'words'}
         style={{
-          backgroundColor: '#fff',
-          borderRadius: 14,
-          borderWidth: 1,
+          backgroundColor: '#fff', borderRadius: 14, borderWidth: 1,
           borderColor: error ? COLORS.danger : '#E2E8F0',
-          paddingHorizontal: 14,
-          paddingVertical: 12,
-          fontSize: 15,
-          color: '#0F172A',
+          paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A',
         }}
       />
       {error ? <Text style={{ color: COLORS.danger, fontSize: 12, marginTop: 3 }}>{error}</Text> : null}
@@ -83,32 +73,105 @@ function Field({
   );
 }
 
+// ─── Barra de progreso ────────────────────────────────────────────────────────
+function StepBar({ step, total }: { step: number; total: number }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 6, marginBottom: 24 }}>
+      {Array.from({ length: total }).map((_, i) => (
+        <View key={i} style={{
+          flex: 1, height: 5, borderRadius: 99,
+          backgroundColor: i < step ? COLORS.ocean : '#E2E8F0',
+        }} />
+      ))}
+    </View>
+  );
+}
+
+// ─── Pantalla de aviso de privacidad ─────────────────────────────────────────
+function PrivacyScreen({ onAccept, onBack }: { onAccept: () => void; onBack: () => void }) {
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
+        <TouchableOpacity onPress={onBack} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 }}>
+          <MaterialIcons name="arrow-back" size={22} color={COLORS.ocean} />
+          <Text style={{ color: COLORS.ocean, fontWeight: '700' }}>Volver</Text>
+        </TouchableOpacity>
+        <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 16 }}>Aviso de Privacidad</Text>
+        {[
+          ['Responsable', 'Costa Inteligente · privacidad@costainteligente.mx'],
+          ['Datos recopilados', 'Nombre, correo, teléfono, RFC, dirección, foto del negocio y ubicación GPS (con tu consentimiento).'],
+          ['Finalidades', 'Gestión de cuenta, publicación de servicios, reservaciones, pagos y notificaciones.'],
+          ['Transferencias', 'Mercado Pago (pagos), Expo (notificaciones push).'],
+          ['Derechos ARCO', 'Acceso, rectificación, cancelación y oposición en privacidad@costainteligente.mx.'],
+        ].map(([k, v]) => (
+          <Text key={k} style={{ color: '#0F172A', lineHeight: 22, marginBottom: 12 }}>
+            <Text style={{ fontWeight: '800' }}>{k}: </Text>{v}
+          </Text>
+        ))}
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+          <TouchableOpacity onPress={onBack} style={{ flex: 1, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 14, alignItems: 'center' }}>
+            <Text style={{ fontWeight: '800', color: '#0F172A' }}>Cancelar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onAccept} style={{ flex: 1, backgroundColor: COLORS.ocean, borderRadius: 14, padding: 14, alignItems: 'center' }}>
+            <Text style={{ color: '#fff', fontWeight: '800' }}>Acepto y continúo</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function RegisterProviderScreen() {
   const router = useRouter();
-  const { setLoading: setAuthLoading } = useAuthStore();
-  const [form, setForm] = useState<FormState>({
-    email: '', password: '', businessName: '', rfc: '', phone: '', address: '',
-  });
+
+  // Pasos: 0=privacidad, 1=datos, 2=servicios, 3=foto/desc, 4=enviando
+  const [screen, setScreen] = useState<'form' | 'privacy' | 'services' | 'photo'>('form');
+
+  const [form, setForm] = useState<FormState>({ email: '', password: '', businessName: '', rfc: '', phone: '', address: '' });
   const [errors, setErrors] = useState<Errors>({});
+
+  // Paso 2
+  const [selectedServices, setSelectedServices] = useState<Set<ServiceModuleId>>(new Set());
+
+  // Paso 3
+  const [photoUrl, setPhotoUrl]     = useState('');
+  const [description, setDescription] = useState('');
+
   const [loading, setLoading] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
 
-  const update = (key: keyof FormState) => (value: string) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const update = (key: keyof FormState) => (v: string) => setForm((p) => ({ ...p, [key]: v }));
 
-  const handleRegister = async () => {
-    if (!privacyAccepted) {
-      setShowPrivacy(true);
-      return;
-    }
-    const errs = validate(form);
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+  const toggleService = (id: ServiceModuleId) => {
+    setSelectedServices((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  // ── Paso 1 → aviso de privacidad ──
+  const handleStep1 = () => {
+    const e = validate(form);
+    if (Object.keys(e).length > 0) { setErrors(e); return; }
     setErrors({});
-    setLoading(true);
+    setScreen('privacy');
+  };
 
+  // ── Aviso aceptado → paso 2 ──
+  const handlePrivacyAccepted = () => setScreen('services');
+
+  // ── Paso 2 → paso 3 ──
+  const handleStep2 = () => {
+    if (selectedServices.size === 0) return; // botón deshabilitado
+    setScreen('photo');
+  };
+
+  // ── Paso 3 → enviar ──
+  const handleSubmit = async () => {
+    setLoading(true);
+    setErrors({});
     try {
-      // Un solo endpoint que crea usuario + perfil + proveedor atómicamente
       const API_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
       const res = await fetch(`${API_URL}/api/auth/register-provider`, {
         method: 'POST',
@@ -120,115 +183,228 @@ export default function RegisterProviderScreen() {
           rfc:          form.rfc.toUpperCase().trim(),
           phone:        form.phone.trim(),
           address:      form.address.trim(),
+          services:     Array.from(selectedServices),
+          photoUrl:     photoUrl.trim(),
+          description:  description.trim(),
         }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
-        setErrors({ email: data.error ?? 'Error al crear la cuenta.' });
+        setErrors({ general: data.error ?? 'Error al crear la cuenta.' });
+        setScreen('form');
         setLoading(false);
         return;
       }
-
       setLoading(false);
       router.replace('/auth/pending-approval' as any);
-    } catch (err) {
-      console.error('[RegisterProvider]', err);
-      setErrors({ email: 'Error de red. Verifica tu conexión e intenta de nuevo.' });
+    } catch {
+      setErrors({ general: 'Error de red. Verifica tu conexión e intenta de nuevo.' });
+      setScreen('form');
       setLoading(false);
     }
   };
 
-  if (showPrivacy) {
+  // ── Pantalla aviso de privacidad ──
+  if (screen === 'privacy') {
+    return <PrivacyScreen onAccept={handlePrivacyAccepted} onBack={() => setScreen('form')} />;
+  }
+
+  // ── Paso 2: Selección de servicios ──
+  if (screen === 'services') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-        <ScrollView contentContainerStyle={{ padding: 24 }}>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 16 }}>
-            Aviso de Privacidad
+        <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
+          <TouchableOpacity onPress={() => setScreen('form')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <MaterialIcons name="arrow-back" size={22} color={COLORS.ocean} />
+            <Text style={{ color: COLORS.ocean, fontWeight: '700' }}>Volver</Text>
+          </TouchableOpacity>
+
+          <StepBar step={2} total={3} />
+
+          <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>
+            ¿Qué servicios ofreces?
           </Text>
-          <Text style={{ color: '#0F172A', lineHeight: 22, marginBottom: 12 }}>
-            <Text style={{ fontWeight: '800' }}>Responsable:</Text> Costa Inteligente · privacidad@costainteligente.mx
+          <Text style={{ color: '#64748B', marginBottom: 20, lineHeight: 20 }}>
+            Selecciona uno o más. Podrás modificarlos después desde tu panel.
           </Text>
-          <Text style={{ color: '#0F172A', lineHeight: 22, marginBottom: 12 }}>
-            <Text style={{ fontWeight: '800' }}>Datos recopilados:</Text> nombre, correo, teléfono, RFC, dirección y ubicación GPS (con tu consentimiento).
-          </Text>
-          <Text style={{ color: '#0F172A', lineHeight: 22, marginBottom: 12 }}>
-            <Text style={{ fontWeight: '800' }}>Finalidades:</Text> gestión de cuenta, publicación de servicios, reservaciones, pagos y notificaciones.
-          </Text>
-          <Text style={{ color: '#0F172A', lineHeight: 22, marginBottom: 12 }}>
-            <Text style={{ fontWeight: '800' }}>Transferencias:</Text> Mercado Pago (pagos), Expo (notificaciones push).
-          </Text>
-          <Text style={{ color: '#0F172A', lineHeight: 22, marginBottom: 20 }}>
-            <Text style={{ fontWeight: '800' }}>Derechos ARCO:</Text> acceso, rectificación, cancelación y oposición en privacidad@costainteligente.mx.
-          </Text>
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              onPress={() => setShowPrivacy(false)}
-              style={{ flex: 1, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', padding: 13, alignItems: 'center' }}
-            >
-              <Text style={{ fontWeight: '800' }}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => { setPrivacyAccepted(true); setShowPrivacy(false); handleRegister(); }}
-              style={{ flex: 1, backgroundColor: COLORS.ocean, borderRadius: 14, padding: 13, alignItems: 'center' }}
-            >
-              <Text style={{ color: '#fff', fontWeight: '800' }}>Acepto</Text>
-            </TouchableOpacity>
-          </View>
+
+          {SERVICE_DEFS.map((def) => {
+            const active = selectedServices.has(def.id);
+            return (
+              <TouchableOpacity key={def.id} onPress={() => toggleService(def.id)}>
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 14,
+                  backgroundColor: '#fff', borderRadius: 16, borderWidth: 2,
+                  borderColor: active ? def.color : '#E2E8F0',
+                  padding: 14, marginBottom: 10,
+                }}>
+                  <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: `${def.color}20`, alignItems: 'center', justifyContent: 'center' }}>
+                    <MaterialIcons name={def.icon as any} size={26} color={def.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>{def.name}</Text>
+                    <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }} numberOfLines={2}>{def.description}</Text>
+                  </View>
+                  <View style={{ width: 28, height: 28, borderRadius: 99, backgroundColor: active ? def.color : '#F1F5F9', alignItems: 'center', justifyContent: 'center', borderWidth: active ? 0 : 1, borderColor: '#E2E8F0' }}>
+                    {active && <MaterialIcons name="check" size={16} color="#fff" />}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          <TouchableOpacity
+            onPress={handleStep2}
+            disabled={selectedServices.size === 0}
+            style={{
+              backgroundColor: selectedServices.size === 0 ? '#CBD5E1' : COLORS.ocean,
+              borderRadius: 14, padding: 15, alignItems: 'center',
+              flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+              Continuar ({selectedServices.size} seleccionado{selectedServices.size !== 1 ? 's' : ''})
+            </Text>
+            <MaterialIcons name="arrow-forward" size={20} color="#fff" />
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     );
   }
 
+  // ── Paso 3: Foto y descripción ──
+  if (screen === 'photo') {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
+            <TouchableOpacity onPress={() => setScreen('services')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <MaterialIcons name="arrow-back" size={22} color={COLORS.ocean} />
+              <Text style={{ color: COLORS.ocean, fontWeight: '700' }}>Volver</Text>
+            </TouchableOpacity>
+
+            <StepBar step={3} total={3} />
+
+            <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>
+              Foto de tu negocio
+            </Text>
+            <Text style={{ color: '#64748B', marginBottom: 20, lineHeight: 20 }}>
+              Una foto y descripción atractiva aumentan tus probabilidades de ser contactado.
+            </Text>
+
+            {/* Preview foto */}
+            <View style={{ width: '100%', height: 180, borderRadius: 18, backgroundColor: '#F1F5F9', marginBottom: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}>
+              {photoUrl.trim() ? (
+                <Image source={{ uri: photoUrl.trim() }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              ) : (
+                <View style={{ alignItems: 'center', gap: 8 }}>
+                  <MaterialIcons name="add-photo-alternate" size={44} color="#CBD5E1" />
+                  <Text style={{ color: '#94A3B8', fontSize: 13 }}>Vista previa de la foto</Text>
+                </View>
+              )}
+            </View>
+
+            <CardBox>
+              <Text style={{ fontWeight: '700', color: '#0F172A', fontSize: 13, marginBottom: 6 }}>
+                URL de la foto principal (opcional)
+              </Text>
+              <TextInput
+                value={photoUrl} onChangeText={setPhotoUrl}
+                placeholder="https://..." placeholderTextColor="#94A3B8"
+                autoCapitalize="none"
+                style={{ backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F172A', marginBottom: 16 }}
+              />
+              <Text style={{ fontWeight: '700', color: '#0F172A', fontSize: 13, marginBottom: 6 }}>
+                Descripción de tu negocio (opcional)
+              </Text>
+              <TextInput
+                value={description} onChangeText={setDescription}
+                placeholder="Cuéntanos qué hace especial a tu negocio..."
+                placeholderTextColor="#94A3B8" multiline numberOfLines={4}
+                style={{ backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F172A', textAlignVertical: 'top', minHeight: 90 }}
+              />
+            </CardBox>
+
+            {/* Resumen servicios seleccionados */}
+            <View style={{ backgroundColor: `${COLORS.ocean}08`, borderRadius: 14, borderWidth: 1, borderColor: `${COLORS.ocean}20`, padding: 14, marginBottom: 16 }}>
+              <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 13, marginBottom: 8 }}>Servicios registrados</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {Array.from(selectedServices).map((id) => {
+                  const def = SERVICE_DEFS.find((s) => s.id === id)!;
+                  return (
+                    <View key={id} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: `${def.color}15`, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                      <MaterialIcons name={def.icon as any} size={13} color={def.color} />
+                      <Text style={{ fontWeight: '700', fontSize: 12, color: def.color }}>{def.name}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+
+            <InfoBox text="Tu cuenta quedará pendiente de verificación. Un administrador la revisará en 24-48 horas y recibirás notificación al ser aprobada." />
+
+            <TouchableOpacity
+              onPress={handleSubmit}
+              disabled={loading}
+              style={{
+                backgroundColor: loading ? '#94A3B8' : COLORS.ocean,
+                borderRadius: 14, padding: 15, alignItems: 'center',
+                flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 4,
+              }}
+            >
+              {loading ? <ActivityIndicator color="#fff" size="small" /> : <MaterialIcons name="send" size={20} color="#fff" />}
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+                {loading ? 'Enviando solicitud...' : 'Enviar solicitud de registro'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Paso 1: Datos del negocio ──
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
-          <TouchableOpacity onPress={() => router.back()} className="flex-row items-center gap-2 mb-4">
+          <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <MaterialIcons name="arrow-back" size={22} color={COLORS.ocean} />
             <Text style={{ color: COLORS.ocean, fontWeight: '700' }}>Volver</Text>
           </TouchableOpacity>
 
-          <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 6 }}>
+          <StepBar step={1} total={3} />
+
+          <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>
             Registra tu negocio
           </Text>
-          <Text style={{ color: '#0F172A99', marginBottom: 20, lineHeight: 20 }}>
-            Tu cuenta quedará pendiente de verificación hasta que un administrador la apruebe.
+          <Text style={{ color: '#64748B', marginBottom: 20, lineHeight: 20 }}>
+            Datos del responsable y del negocio. Serán revisados por el administrador.
           </Text>
 
+          {errors.general && (
+            <View style={{ backgroundColor: `${COLORS.danger}10`, borderRadius: 12, padding: 12, marginBottom: 14, flexDirection: 'row', gap: 8 }}>
+              <MaterialIcons name="error-outline" size={18} color={COLORS.danger} />
+              <Text style={{ color: COLORS.danger, fontSize: 13, flex: 1 }}>{errors.general}</Text>
+            </View>
+          )}
+
           <CardBox>
-            <Text style={{ fontWeight: '800', fontSize: 16, color: '#0F172A', marginBottom: 14 }}>
-              Datos del negocio
-            </Text>
-            <Field label="Correo electrónico" value={form.email} onChangeText={update('email')} error={errors.email} placeholder="correo@negocio.com" keyboardType="email-address" autoCapitalize="none" />
-            <Field label="Contraseña" value={form.password} onChangeText={update('password')} error={errors.password} placeholder="Mínimo 8 caracteres" secure autoCapitalize="none" />
-            <Field label="Nombre del negocio" value={form.businessName} onChangeText={update('businessName')} error={errors.businessName} placeholder="Ej. Pescadería El Tiburón" />
-            <Field label="RFC" value={form.rfc} onChangeText={update('rfc')} error={errors.rfc} placeholder="XAXX010101000" autoCapitalize="characters" />
-            <Field label="Teléfono (10 dígitos)" value={form.phone} onChangeText={update('phone')} error={errors.phone} placeholder="7551234567" keyboardType="phone-pad" autoCapitalize="none" />
-            <Field label="Dirección completa" value={form.address} onChangeText={update('address')} error={errors.address} placeholder="Calle, colonia, municipio, CP" />
+            <Text style={{ fontWeight: '800', fontSize: 16, color: '#0F172A', marginBottom: 14 }}>Datos del negocio</Text>
+            <Field label="Correo electrónico" value={form.email} onChangeText={update('email')} error={errors.email} placeholder="correo@negocio.com" keyboardType="email-address" autoCapitalize="none" required />
+            <Field label="Contraseña" value={form.password} onChangeText={update('password')} error={errors.password} placeholder="Mínimo 8 caracteres" secure autoCapitalize="none" required />
+            <Field label="Nombre del negocio" value={form.businessName} onChangeText={update('businessName')} error={errors.businessName} placeholder="Ej. Pescadería El Tiburón" required />
+            <Field label="RFC" value={form.rfc} onChangeText={update('rfc')} error={errors.rfc} placeholder="XAXX010101000" autoCapitalize="characters" required />
+            <Field label="Teléfono (10 dígitos)" value={form.phone} onChangeText={update('phone')} error={errors.phone} placeholder="7551234567" keyboardType="phone-pad" autoCapitalize="none" required />
+            <Field label="Dirección completa" value={form.address} onChangeText={update('address')} error={errors.address} placeholder="Calle, colonia, municipio, CP" required />
           </CardBox>
 
-          <InfoBox text="Al registrarte, tu cuenta tendrá estado 'Pendiente' hasta la revisión del administrador. Recibirás una notificación push al ser aprobado." />
-
           <TouchableOpacity
-            onPress={handleRegister}
-            disabled={loading}
-            style={{
-              backgroundColor: loading ? '#94A3B8' : COLORS.ocean,
-              borderRadius: 14,
-              padding: 15,
-              alignItems: 'center',
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: 8,
-              marginTop: 4,
-            }}
+            onPress={handleStep1}
+            style={{ backgroundColor: COLORS.ocean, borderRadius: 14, padding: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8 }}
           >
-            {loading ? <ActivityIndicator color="#fff" size="small" /> : <MaterialIcons name="send" size={20} color="#fff" />}
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
-              {loading ? 'Enviando solicitud...' : 'Enviar solicitud de registro'}
-            </Text>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Siguiente</Text>
+            <MaterialIcons name="arrow-forward" size={20} color="#fff" />
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
