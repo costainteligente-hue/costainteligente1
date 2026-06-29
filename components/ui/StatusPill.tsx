@@ -1,48 +1,55 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 
-function getPillColors(status: string): { bg: string; border: string; text: string } {
+const C = {
+  green:  '#16a34a',
+  orange: '#ea580c',
+  red:    '#dc2626',
+  blue:   '#2563eb',
+  purple: '#7c3aed',
+  yellow: '#ca8a04',
+  ocean:  '#0f766e',
+};
+
+function getPillColor(status: string): string {
   const s = status.toLowerCase().trim();
-
-  const isGreen =
-    s.includes('verificad') || s.includes('aceptad') || s.includes('aprobad') ||
-    s.includes('activo') || s.includes('confirmad') || s.includes('completad') ||
-    s.includes('pagado') || s.includes('respondida');
-
-  const isOrange =
-    s.includes('pendiente') || s.includes('solicitud') || s.includes('espera') ||
-    s.includes('revisión') || s.includes('sin responder');
-
-  const isRed =
-    s.includes('rechaz') || s.includes('cancel') || s.includes('no disponible') ||
-    s.includes('pausad') || s.includes('error') || s.includes('fallido');
-
-  const isBlue =
-    s.includes('guardado') || s.includes('borrador') || s.includes('programad');
-
-  const isPurple =
-    s.includes('promoción') || s.includes('descuento') || s.includes('destacado');
-
-  if (isGreen) return { bg: '#DCFCE7', border: '#16A34A', text: '#166534' };
-  if (isOrange) return { bg: '#FFEDD5', border: '#EA580C', text: '#9A3412' };
-  if (isRed) return { bg: '#FEE2E2', border: '#DC2626', text: '#991B1B' };
-  if (isBlue) return { bg: '#DBEAFE', border: '#2563EB', text: '#1D4ED8' };
-  if (isPurple) return { bg: '#EDE9FE', border: '#7C3AED', text: '#5B21B6' };
-  return { bg: '#CCFBF1', border: '#0F766E', text: '#134E4A' };
+  const rating = parseFloat(s);
+  if (!isNaN(rating)) {
+    if (rating >= 4.5) return C.yellow;
+    if (rating >= 3.5) return C.green;
+    if (rating >= 2.5) return C.orange;
+    return C.red;
+  }
+  if (/(verificado|aceptado|aprobado|activo|confirmad|completad|pagado|respondida|foto recibida|foto cargada|visible|principal|listo|finaliz)/.test(s)) return C.green;
+  if (/(pendiente|solicitud|solicitad|sin responder|espera|revisión|revision|obligatorio|comprobante)/.test(s)) return C.orange;
+  if (/(no disponible|pausad|bloquead|rechaz|cancel|error|conflicto|report|vencid|fallid)/.test(s)) return C.red;
+  if (/(guardado|programad|configurad|borrador)/.test(s)) return C.blue;
+  if (/(promoción|promocion|descuento|destacado)/.test(s)) return C.purple;
+  return C.ocean;
 }
 
 interface Props {
   status: string;
 }
 
+/** Equivalent to .pill in PWA */
 export function StatusPill({ status }: Props) {
-  const { bg, border, text } = getPillColors(status);
+  const color = getPillColor(status);
   return (
     <View
-      style={{ backgroundColor: bg, borderColor: border, borderWidth: 1 }}
-      className="rounded-full px-2.5 py-1 self-start"
+      style={{
+        backgroundColor: `${color}20`,
+        borderColor: `${color}40`,
+        borderWidth: 1,
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        alignSelf: 'flex-start',
+        minHeight: 28,
+        justifyContent: 'center',
+      }}
     >
-      <Text style={{ color: text }} className="text-xs font-bold">
+      <Text style={{ color, fontSize: 11, fontWeight: '800', lineHeight: 13 }}>
         {status}
       </Text>
     </View>

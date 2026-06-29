@@ -10,6 +10,7 @@ interface Props {
   color?: string;
 }
 
+/** Equivalent to .header-card in PWA — grid 48px | 1fr, accent avatar, h2+p */
 export function HeaderCard({ title, subtitle, icon, color = COLORS.ocean }: Props) {
   return (
     <View
@@ -24,35 +25,31 @@ export function HeaderCard({ title, subtitle, icon, color = COLORS.ocean }: Prop
         marginBottom: 12,
         gap: 14,
         shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.07,
+        shadowRadius: 24,
         elevation: 3,
       }}
     >
+      {/* Avatar 48×48 round-sq */}
       <View
         style={{
           width: 48,
           height: 48,
           borderRadius: 16,
-          backgroundColor: `${color}1A`,
-          borderWidth: 1,
-          borderColor: `${color}20`,
+          backgroundColor: `${color}20`,
           alignItems: 'center',
           justifyContent: 'center',
+          flexShrink: 0,
         }}
       >
         <MaterialIcons name={icon} size={24} color={color} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text
-          style={{ color: '#0F172A', fontSize: 18, fontWeight: '800', letterSpacing: -0.2 }}
-        >
+        <Text style={{ color: '#0F172A', fontSize: 19, fontWeight: '900', lineHeight: 23 }}>
           {title}
         </Text>
-        <Text
-          style={{ color: '#0F172A99', marginTop: 4, lineHeight: 20, fontWeight: '500' }}
-        >
+        <Text style={{ color: 'rgba(15,23,42,0.62)', marginTop: 5, lineHeight: 20, fontWeight: '600', fontSize: 14 }}>
           {subtitle}
         </Text>
       </View>

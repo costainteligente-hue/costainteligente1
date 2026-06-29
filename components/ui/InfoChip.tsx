@@ -9,14 +9,25 @@ interface Props {
   color?: string;
 }
 
+/** Equivalent to .chip / infoChip() in PWA */
 export function InfoChip({ icon, text, color = COLORS.ocean }: Props) {
   return (
     <View
-      style={{ backgroundColor: `${color}18`, borderColor: `${color}40`, borderWidth: 1 }}
-      className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        minHeight: 32,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: `${color}30`,
+        backgroundColor: `${color}15`,
+      }}
     >
-      <MaterialIcons name={icon} size={15} color={color} />
-      <Text style={{ color: '#0F172A' }} className="text-xs font-bold">
+      <MaterialIcons name={icon} size={14} color={color} />
+      <Text style={{ color: '#0F172A', fontSize: 12, fontWeight: '800' }}>
         {text}
       </Text>
     </View>

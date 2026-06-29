@@ -12,6 +12,7 @@ interface Props {
   actionColor?: string;
 }
 
+/** Equivalent to section-header + section-title + text-action in PWA */
 export function SectionHeader({
   title,
   subtitle,
@@ -21,21 +22,29 @@ export function SectionHeader({
   actionColor = COLORS.ocean,
 }: Props) {
   return (
-    <View className="flex-row items-center justify-between mb-1">
-      <View style={{ flex: 1, marginRight: 8 }}>
-        <Text style={{ color: '#0F172A', fontSize: 17, fontWeight: '800' }}>{title}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: '#0F172A', fontSize: 18, fontWeight: '900', lineHeight: 22 }}>{title}</Text>
         {subtitle ? (
-          <Text style={{ color: '#0F172A99', fontSize: 13, marginTop: 2 }}>{subtitle}</Text>
+          <Text style={{ color: 'rgba(15,23,42,0.62)', fontSize: 13, marginTop: 3 }}>{subtitle}</Text>
         ) : null}
       </View>
       {actionLabel && onAction ? (
         <TouchableOpacity
           onPress={onAction}
-          className="flex-row items-center gap-1 px-3 py-1.5 rounded-xl"
-          style={{ backgroundColor: `${actionColor}18` }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            minHeight: 38,
+            borderRadius: 14,
+            backgroundColor: 'transparent',
+          }}
         >
           {actionIcon ? <MaterialIcons name={actionIcon} size={16} color={actionColor} /> : null}
-          <Text style={{ color: actionColor, fontWeight: '800', fontSize: 13 }}>
+          <Text style={{ color: actionColor, fontWeight: '900', fontSize: 13 }}>
             {actionLabel}
           </Text>
         </TouchableOpacity>
