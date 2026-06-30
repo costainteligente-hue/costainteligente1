@@ -12,11 +12,11 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { signUp } from '@/lib/services/auth.service';
-import { useAuthStore } from '@/stores/authStore';
 import { COLORS, SERVICE_DEFS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { InfoBox } from '@/components/ui/InfoBox';
+import { LocationPicker, type PickedLocation } from '@/components/ui/LocationPicker';
+import { pickImage } from '@/lib/utils/imageUpload';
 import type { ServiceModuleId } from '@/types';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -134,9 +134,12 @@ export default function RegisterProviderScreen() {
   // Paso 2
   const [selectedServices, setSelectedServices] = useState<Set<ServiceModuleId>>(new Set());
 
-  // Paso 3
-  const [photoUrl, setPhotoUrl]     = useState('');
-  const [description, setDescription] = useState('');
+  // Paso 3 — foto, descripción y ubicación
+  const [photoUri,     setPhotoUri]     = useState('');
+  const [description,  setDescription]  = useState('');
+  const [pickedLoc,    setPickedLoc]    = useState<PickedLocation | null>(null);
+  const [showLocMap,   setShowLocMap]   = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -148,6 +151,14 @@ export default function RegisterProviderScreen() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  const handlePickPhoto = async () => {
+    setUploadingPhoto(true);
+    try {
+      const results = await pickImage({ source: 'library', quality: 0.75 });
+      if (results.length > 0) setPhotoUri(results[0].uri);
+    } finally { setUploadingPhoto(false); }
   };
 
   // ── Paso 1 → aviso de privacidad ──
@@ -163,7 +174,7 @@ export default function RegisterProviderScreen() {
 
   // ── Paso 2 → paso 3 ──
   const handleStep2 = () => {
-    if (selectedServices.size === 0) return; // botón deshabilitado
+    if (selectedServices.size === 0) return;
     setScreen('photo');
   };
 
@@ -184,8 +195,10 @@ export default function RegisterProviderScreen() {
           phone:        form.phone.trim(),
           address:      form.address.trim(),
           services:     Array.from(selectedServices),
-          photoUrl:     photoUrl.trim(),
+          photoUrl:     photoUri.trim(),
           description:  description.trim(),
+          latitude:     pickedLoc?.latitude ?? null,
+          longitude:    pickedLoc?.longitude ?? null,
         }),
       });
       const data = await res.json();
@@ -196,7 +209,8 @@ export default function RegisterProviderScreen() {
         return;
       }
       setLoading(false);
-      router.replace('/auth/pending-approval' as any);
+      // Go directly to provider dashboard — pending banner shows inside
+      router.replace('/(provider)' as any);
     } catch {
       setErrors({ general: 'Error de red. Verifica tu conexión e intenta de nuevo.' });
       setScreen('form');
@@ -253,15 +267,8 @@ export default function RegisterProviderScreen() {
             );
           })}
 
-          <TouchableOpacity
-            onPress={handleStep2}
-            disabled={selectedServices.size === 0}
-            style={{
-              backgroundColor: selectedServices.size === 0 ? '#CBD5E1' : COLORS.ocean,
-              borderRadius: 14, padding: 15, alignItems: 'center',
-              flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8,
-            }}
-          >
+          <TouchableOpacity onPress={handleStep2} disabled={selectedServices.size === 0}
+            style={{ backgroundColor: selectedServices.size === 0 ? '#CBD5E1' : COLORS.ocean, borderRadius: 14, padding: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8 }}>
             <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
               Continuar ({selectedServices.size} seleccionado{selectedServices.size !== 1 ? 's' : ''})
             </Text>
@@ -272,10 +279,17 @@ export default function RegisterProviderScreen() {
     );
   }
 
-  // ── Paso 3: Foto y descripción ──
+  // ── Paso 3: Foto, ubicación y descripción ──
   if (screen === 'photo') {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        {/* LocationPicker modal */}
+        <LocationPicker
+          visible={showLocMap}
+          initial={pickedLoc ?? undefined}
+          onConfirm={(loc) => setPickedLoc(loc)}
+          onClose={() => setShowLocMap(false)}
+        />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
             <TouchableOpacity onPress={() => setScreen('services')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -286,43 +300,76 @@ export default function RegisterProviderScreen() {
             <StepBar step={3} total={3} />
 
             <Text style={{ fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>
-              Foto de tu negocio
+              Foto y ubicación
             </Text>
             <Text style={{ color: '#64748B', marginBottom: 20, lineHeight: 20 }}>
-              Una foto y descripción atractiva aumentan tus probabilidades de ser contactado.
+              Una foto real y la ubicación exacta aumentan tus probabilidades de ser aprobado y contactado.
             </Text>
 
-            {/* Preview foto */}
-            <View style={{ width: '100%', height: 180, borderRadius: 18, backgroundColor: '#F1F5F9', marginBottom: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}>
-              {photoUrl.trim() ? (
-                <Image source={{ uri: photoUrl.trim() }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-              ) : (
-                <View style={{ alignItems: 'center', gap: 8 }}>
-                  <MaterialIcons name="add-photo-alternate" size={44} color="#CBD5E1" />
-                  <Text style={{ color: '#94A3B8', fontSize: 13 }}>Vista previa de la foto</Text>
-                </View>
-              )}
-            </View>
-
+            {/* ── Foto del negocio ── */}
             <CardBox>
-              <Text style={{ fontWeight: '700', color: '#0F172A', fontSize: 13, marginBottom: 6 }}>
-                URL de la foto principal (opcional)
-              </Text>
-              <TextInput
-                value={photoUrl} onChangeText={setPhotoUrl}
-                placeholder="https://..." placeholderTextColor="#94A3B8"
-                autoCapitalize="none"
-                style={{ backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F172A', marginBottom: 16 }}
-              />
-              <Text style={{ fontWeight: '700', color: '#0F172A', fontSize: 13, marginBottom: 6 }}>
-                Descripción de tu negocio (opcional)
-              </Text>
-              <TextInput
-                value={description} onChangeText={setDescription}
-                placeholder="Cuéntanos qué hace especial a tu negocio..."
-                placeholderTextColor="#94A3B8" multiline numberOfLines={4}
-                style={{ backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#0F172A', textAlignVertical: 'top', minHeight: 90 }}
-              />
+              <Text style={{ fontWeight: '900', color: '#0F172A', fontSize: 15, marginBottom: 12 }}>📷 Foto principal del negocio</Text>
+
+              {/* Preview */}
+              <TouchableOpacity onPress={handlePickPhoto}
+                style={{ width: '100%', height: 160, borderRadius: 14, backgroundColor: '#F1F5F9', marginBottom: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: photoUri ? COLORS.ocean : '#E2E8F0', borderStyle: photoUri ? 'solid' : 'dashed' }}>
+                {photoUri ? (
+                  <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                ) : (
+                  <View style={{ alignItems: 'center', gap: 8 }}>
+                    {uploadingPhoto ? <ActivityIndicator color={COLORS.ocean} /> : <MaterialIcons name="add-photo-alternate" size={40} color="#94A3B8" />}
+                    <Text style={{ color: '#94A3B8', fontSize: 13, fontWeight: '700' }}>
+                      {uploadingPhoto ? 'Cargando foto...' : 'Toca para seleccionar foto'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity onPress={handlePickPhoto} disabled={uploadingPhoto}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: `${COLORS.ocean}12`, borderWidth: 1, borderColor: `${COLORS.ocean}25` }}>
+                  <MaterialIcons name="photo-library" size={16} color={COLORS.ocean} />
+                  <Text style={{ color: COLORS.ocean, fontWeight: '800', fontSize: 13 }}>Galería</Text>
+                </TouchableOpacity>
+                {photoUri ? (
+                  <TouchableOpacity onPress={() => setPhotoUri('')}
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: `${COLORS.danger}30` }}>
+                    <MaterialIcons name="delete-outline" size={16} color={COLORS.danger} />
+                    <Text style={{ color: COLORS.danger, fontWeight: '800', fontSize: 13 }}>Quitar foto</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </CardBox>
+
+            {/* ── Ubicación del negocio ── */}
+            <CardBox>
+              <Text style={{ fontWeight: '900', color: '#0F172A', fontSize: 15, marginBottom: 12 }}>📍 Ubicación del negocio</Text>
+              <TouchableOpacity onPress={() => setShowLocMap(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: pickedLoc ? COLORS.ocean : '#E2E8F0', backgroundColor: pickedLoc ? `${COLORS.ocean}08` : '#F8FAFC' }}>
+                <View style={{ width: 40, height: 40, borderRadius: 999, backgroundColor: pickedLoc ? `${COLORS.ocean}20` : '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialIcons name="map" size={20} color={pickedLoc ? COLORS.ocean : '#94A3B8'} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: '800', color: pickedLoc ? COLORS.ocean : '#94A3B8', fontSize: 14 }}>
+                    {pickedLoc ? 'Ubicación marcada ✓' : 'Marcar en el mapa'}
+                  </Text>
+                  <Text style={{ color: 'rgba(15,23,42,0.62)', fontSize: 12, marginTop: 2 }}>
+                    {pickedLoc
+                      ? `${pickedLoc.latitude.toFixed(5)}° N · ${Math.abs(pickedLoc.longitude).toFixed(5)}° O`
+                      : 'Opcional pero recomendado para ser aprobado más rápido'}
+                  </Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={18} color={pickedLoc ? COLORS.ocean : '#CBD5E1'} />
+              </TouchableOpacity>
+            </CardBox>
+
+            {/* ── Descripción ── */}
+            <CardBox>
+              <Text style={{ fontWeight: '900', color: '#0F172A', fontSize: 15, marginBottom: 12 }}>📝 Descripción del negocio</Text>
+              <TextInput value={description} onChangeText={setDescription}
+                placeholder="Cuéntanos qué hace especial a tu negocio..." placeholderTextColor="#94A3B8"
+                multiline numberOfLines={4}
+                style={{ backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#0F172A', textAlignVertical: 'top', minHeight: 90 }} />
             </CardBox>
 
             {/* Resumen servicios seleccionados */}
@@ -341,20 +388,13 @@ export default function RegisterProviderScreen() {
               </View>
             </View>
 
-            <InfoBox text="Tu cuenta quedará pendiente de verificación. Un administrador la revisará en 24-48 horas y recibirás notificación al ser aprobada." />
+            <InfoBox text="Al enviar accederás directamente a tu Dashboard. Tu cuenta aparecerá como 'Pendiente de aprobación' hasta que un administrador la revise. Mientras tanto podrás explorar el panel pero no publicar servicios." />
 
-            <TouchableOpacity
-              onPress={handleSubmit}
-              disabled={loading}
-              style={{
-                backgroundColor: loading ? '#94A3B8' : COLORS.ocean,
-                borderRadius: 14, padding: 15, alignItems: 'center',
-                flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 4,
-              }}
-            >
-              {loading ? <ActivityIndicator color="#fff" size="small" /> : <MaterialIcons name="send" size={20} color="#fff" />}
+            <TouchableOpacity onPress={handleSubmit} disabled={loading}
+              style={{ backgroundColor: loading ? '#94A3B8' : COLORS.ocean, borderRadius: 14, padding: 15, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 4 }}>
+              {loading ? <ActivityIndicator color="#fff" size="small" /> : <MaterialIcons name="check-circle" size={20} color="#fff" />}
               <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
-                {loading ? 'Enviando solicitud...' : 'Enviar solicitud de registro'}
+                {loading ? 'Registrando...' : 'Crear cuenta e ir al panel'}
               </Text>
             </TouchableOpacity>
           </ScrollView>

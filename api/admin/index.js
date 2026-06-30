@@ -59,12 +59,41 @@ module.exports = async function handler(req, res) {
     }
 
     // ── USERS ─────────────────────────────────────────────────────────────────
-    if (route === 'users' && req.method === 'GET') {
-      const search = req.query.search ?? '';
-      const rows = search.trim()
-        ? await sql`SELECT p.id, p.full_name, p.phone, p.role, p.created_at, u.email FROM profiles p INNER JOIN users u ON u.id = p.id WHERE p.full_name ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'} ORDER BY p.created_at DESC`
-        : await sql`SELECT p.id, p.full_name, p.phone, p.role, p.created_at, u.email FROM profiles p INNER JOIN users u ON u.id = p.id ORDER BY p.created_at DESC`;
-      return res.status(200).json(rows.map((r) => ({ id: r.id, fullName: r.full_name, email: r.email, phone: r.phone, role: r.role, status: 'active', registeredAt: r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX') : '' })));
+    if (route === 'users') {
+      if (req.method === 'GET') {
+        const search = req.query.search ?? '';
+        const rows = search.trim()
+          ? await sql`SELECT p.id, p.full_name, p.phone, p.role, p.created_at, u.email,
+                        COALESCE(bs.status, 'active') AS block_status
+                      FROM profiles p
+                      INNER JOIN users u ON u.id = p.id
+                      LEFT JOIN user_blocks bs ON bs.user_id = p.id
+                      WHERE p.full_name ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'}
+                      ORDER BY p.created_at DESC`
+          : await sql`SELECT p.id, p.full_name, p.phone, p.role, p.created_at, u.email,
+                        COALESCE(bs.status, 'active') AS block_status
+                      FROM profiles p
+                      INNER JOIN users u ON u.id = p.id
+                      LEFT JOIN user_blocks bs ON bs.user_id = p.id
+                      ORDER BY p.created_at DESC`;
+        return res.status(200).json(rows.map((r) => ({
+          id: r.id, fullName: r.full_name, email: r.email, phone: r.phone,
+          role: r.role, status: r.block_status ?? 'active',
+          registeredAt: r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX') : '',
+        })));
+      }
+      // POST: block / suspend / activate user
+      if (req.method === 'POST') {
+        const { userId, status, reason } = req.body ?? {};
+        if (!userId || !['active', 'suspended', 'blocked'].includes(status))
+          return res.status(400).json({ error: 'userId y status requeridos' });
+        // Upsert into user_blocks table (create if not exists via plain SQL)
+        await sql`
+          INSERT INTO user_blocks (user_id, status, reason, updated_at)
+          VALUES (${userId}, ${status}, ${reason ?? null}, NOW())
+          ON CONFLICT (user_id) DO UPDATE SET status = ${status}, reason = ${reason ?? null}, updated_at = NOW()`;
+        return res.status(200).json({ ok: true });
+      }
     }
 
     // ── PROVIDERS ─────────────────────────────────────────────────────────────
@@ -107,13 +136,33 @@ module.exports = async function handler(req, res) {
     // ── REPORTS ───────────────────────────────────────────────────────────────
     if (route === 'reports') {
       if (req.method === 'GET') {
-        const rows = await sql`SELECT r.id, r.report_type, r.target_id, r.description, r.status, r.created_at, p.full_name AS reporter_name FROM reports r LEFT JOIN profiles p ON p.id = r.reporter_id ORDER BY r.created_at DESC LIMIT 100`;
-        return res.status(200).json(rows.map((r) => ({ id: r.id, reportType: r.report_type, targetId: r.target_id, description: r.description, status: r.status, reporterName: r.reporter_name ?? 'Usuario', createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX') : '' })));
+        const rows = await sql`
+          SELECT r.id, r.report_type, r.target_id, r.description, r.status, r.created_at,
+                 p.full_name AS reporter_name
+          FROM reports r
+          LEFT JOIN profiles p ON p.id = r.reporter_id
+          ORDER BY r.created_at DESC LIMIT 100`;
+        return res.status(200).json(rows.map((r) => ({
+          id: r.id, reportType: r.report_type, targetId: r.target_id,
+          description: r.description, status: r.status,
+          reporterName: r.reporter_name ?? 'Usuario',
+          createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX') : '',
+        })));
       }
       if (req.method === 'POST') {
-        const { id } = req.body ?? {};
+        const { id, action, targetUserId, reason } = req.body ?? {};
         if (!id) return res.status(400).json({ error: 'id requerido' });
+
+        // Resolve the report
         await sql`UPDATE reports SET status = 'resolved', updated_at = NOW() WHERE id = ${id}`;
+
+        // Optional: also block the reported user
+        if (action === 'block-user' && targetUserId) {
+          await sql`
+            INSERT INTO user_blocks (user_id, status, reason, updated_at)
+            VALUES (${targetUserId}, 'blocked', ${reason ?? 'Bloqueado por reporte'}, NOW())
+            ON CONFLICT (user_id) DO UPDATE SET status = 'blocked', reason = ${reason ?? 'Bloqueado por reporte'}, updated_at = NOW()`;
+        }
         return res.status(200).json({ ok: true });
       }
     }

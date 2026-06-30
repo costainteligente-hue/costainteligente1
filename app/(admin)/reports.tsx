@@ -50,10 +50,10 @@ async function fetchReports(): Promise<Report[]> {
   }));
 }
 
-async function resolveReport(id: string) {
+async function resolveReport(payload: { id: string; action?: string; targetUserId?: string; reason?: string }) {
   if (typeof window !== 'undefined') {
     const res = await fetch(`${API_BASE}/api/admin?r=reports`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error('Error al resolver reporte');
     return;
@@ -61,7 +61,7 @@ async function resolveReport(id: string) {
   const { getDb } = await import('@/lib/db/client');
   const { reports } = await import('@/lib/db/schema');
   const { eq } = await import('drizzle-orm');
-  await getDb().update(reports).set({ status: 'resolved', updatedAt: new Date() }).where(eq(reports.id, id));
+  await getDb().update(reports).set({ status: 'resolved', updatedAt: new Date() }).where(eq(reports.id, payload.id));
 }
 
 const TYPE_CONFIG: Record<string, { color: string; icon: keyof typeof MaterialIcons.glyphMap; label: string }> = {
@@ -81,9 +81,12 @@ export default function ReportsScreen() {
   const pending    = allReports.filter((r) => r.status === 'pending').length;
 
   const handleResolve = (id: string) => {
-    Alert.alert('Resolver reporte', '¿Marcar este reporte como resuelto?', [
+    Alert.alert('Resolver reporte', '¿Qué acción deseas tomar?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Resolver', onPress: () => mutation.mutate(id) },
+      { text: 'Solo resolver', onPress: () => mutation.mutate({ id }) },
+      { text: 'Resolver y bloquear usuario', style: 'destructive', onPress: () => {
+        mutation.mutate({ id, action: 'block-user', targetUserId: allReports.find((r) => r.id === id)?.targetId, reason: 'Bloqueado por reporte de usuario' });
+      }},
     ]);
   };
 

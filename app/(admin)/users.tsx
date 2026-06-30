@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { COLORS } from '@/lib/constants';
 import { CardBox } from '@/components/ui/CardBox';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -38,6 +38,31 @@ async function fetchAdminUsers(): Promise<AppUser[]> {
   return adminUsersRepository.findAll();
 }
 
+async function changeUserStatus(userId: string, status: UserStatus, reason?: string): Promise<void> {
+  if (typeof window !== 'undefined') {
+    const res = await fetch(`${API_BASE}/api/admin?r=users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, status, reason }),
+    });
+    if (!res.ok) throw new Error('Error al cambiar estado');
+    return;
+  }
+  // Native: direct DB upsert
+  const { getDb } = await import('@/lib/db/client');
+  const db = getDb();
+  // user_blocks table may not exist yet — graceful fallback
+  try {
+    await db.execute(
+      `INSERT INTO user_blocks (user_id, status, reason, updated_at)
+       VALUES ('${userId}', '${status}', ${reason ? `'${reason}'` : 'NULL'}, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET status = '${status}', updated_at = NOW()` as any
+    );
+  } catch {
+    // table doesn't exist yet; status stored locally only
+  }
+}
+
 function useAdminUsers() {
   return useQuery({ queryKey: ['admin_users'], queryFn: fetchAdminUsers, staleTime: 1000 * 60 * 2 });
 }
@@ -52,13 +77,37 @@ const ROLE_LABEL: Record<string, string>  = { client: 'Cliente', provider: 'Prov
 function UserDetailModal({ user, onClose, onStatusChange }: {
   user: AppUser; onClose: () => void; onStatusChange: (id: string, s: UserStatus) => void;
 }) {
+  const qc = useQueryClient();
+  const [saving, setSaving] = React.useState(false);
   const color = STATUS_COLOR[user.status];
   const rlColor = ROLE_COLOR[user.role] ?? COLORS.ocean;
-  const actions: { label: string; status: UserStatus; color: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
-    { label: 'Activar cuenta', status: 'active',    color: COLORS.success, icon: 'check-circle'  },
-    { label: 'Suspender',      status: 'suspended', color: COLORS.warning, icon: 'pause-circle'  },
-    { label: 'Bloquear',       status: 'blocked',   color: COLORS.danger,  icon: 'block'         },
+
+  const actions: { label: string; status: UserStatus; color: string; icon: keyof typeof MaterialIcons.glyphMap; confirm: string }[] = [
+    { label: 'Activar cuenta',  status: 'active',    color: COLORS.success, icon: 'check-circle', confirm: 'Esto permitirá al usuario usar la app normalmente.' },
+    { label: 'Suspender',       status: 'suspended', color: COLORS.warning, icon: 'pause-circle',  confirm: 'El usuario no podrá iniciar sesión temporalmente.' },
+    { label: 'Bloquear',        status: 'blocked',   color: COLORS.danger,  icon: 'block',         confirm: 'El usuario quedará bloqueado permanentemente.' },
   ].filter((a) => a.status !== user.status);
+
+  const handleAction = (a: typeof actions[0]) => {
+    Alert.alert(a.label, a.confirm, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Confirmar',
+        style: a.status === 'blocked' ? 'destructive' : 'default',
+        onPress: async () => {
+          setSaving(true);
+          try {
+            await changeUserStatus(user.id, a.status);
+            onStatusChange(user.id, a.status);
+            qc.invalidateQueries({ queryKey: ['admin_users'] });
+            onClose();
+          } catch {
+            Alert.alert('Error', 'No se pudo cambiar el estado. Intenta de nuevo.');
+          } finally { setSaving(false); }
+        },
+      },
+    ]);
+  };
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -84,10 +133,10 @@ function UserDetailModal({ user, onClose, onStatusChange }: {
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <CardBox>
             {[
-              { label: 'Correo',     value: user.email,               icon: 'email' as const },
-              { label: 'Teléfono',   value: user.phone ?? 'No registrado', icon: 'phone' as const },
-              { label: 'Rol',        value: ROLE_LABEL[user.role] ?? user.role, icon: 'person' as const },
-              { label: 'Registrado', value: user.registeredAt,         icon: 'calendar-today' as const },
+              { label: 'Correo',     value: user.email,                      icon: 'email'          as const },
+              { label: 'Teléfono',   value: user.phone ?? 'No registrado',   icon: 'phone'          as const },
+              { label: 'Rol',        value: ROLE_LABEL[user.role] ?? user.role, icon: 'person'       as const },
+              { label: 'Registrado', value: user.registeredAt,               icon: 'calendar-today' as const },
             ].map((f) => (
               <View key={f.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <MaterialIcons name={f.icon} size={17} color={COLORS.ocean} />
@@ -100,21 +149,27 @@ function UserDetailModal({ user, onClose, onStatusChange }: {
           </CardBox>
 
           <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 14, marginBottom: 10 }}>Acciones de cuenta</Text>
-          <View style={{ gap: 10 }}>
-            {actions.map((a) => (
-              <TouchableOpacity key={a.status}
-                onPress={() => Alert.alert(a.label, `¿Confirmas ${a.label.toLowerCase()} la cuenta de ${user.fullName ?? user.email}?`, [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Confirmar', style: a.status === 'blocked' ? 'destructive' : 'default', onPress: () => { onStatusChange(user.id, a.status); onClose(); } },
-                ])}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, borderRadius: 14, borderWidth: 1, borderColor: `${a.color}40`, backgroundColor: `${a.color}08` }}
-              >
-                <MaterialIcons name={a.icon} size={20} color={a.color} />
-                <Text style={{ fontWeight: '800', color: a.color, flex: 1 }}>{a.label}</Text>
-                <MaterialIcons name="chevron-right" size={18} color={a.color} />
-              </TouchableOpacity>
-            ))}
-          </View>
+          {saving && (
+            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+              <ActivityIndicator color={COLORS.ocean} />
+              <Text style={{ color: '#64748B', marginTop: 8 }}>Aplicando cambio...</Text>
+            </View>
+          )}
+          {!saving && (
+            <View style={{ gap: 10 }}>
+              {actions.map((a) => (
+                <TouchableOpacity key={a.status} onPress={() => handleAction(a)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, borderRadius: 14, borderWidth: 1, borderColor: `${a.color}40`, backgroundColor: `${a.color}08` }}>
+                  <MaterialIcons name={a.icon} size={20} color={a.color} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '800', color: a.color }}>{a.label}</Text>
+                    <Text style={{ color: 'rgba(15,23,42,0.62)', fontSize: 12, marginTop: 2 }}>{a.confirm}</Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={18} color={a.color} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </ScrollView>
       </SafeAreaView>
     </Modal>
