@@ -239,15 +239,14 @@ export default function ClientDashboard() {
     tourist: 'Turista', local: 'Pescador local',
   };
 
+  // Solo accesos que NO están en la barra inferior (que ya tiene: Inicio, Mapa, Servicios, Temporadas, Comunidad, Perfil)
   const QUICK_ACTIONS = [
-    { icon: 'map' as const,               label: 'Mapa',        color: COLORS.ocean,   route: '/(client)/map' },
-    { icon: 'storefront' as const,        label: 'Servicios',   color: COLORS.info,    route: '/(client)/services' },
-    { icon: 'calendar-month' as const,    label: 'Temporadas',  color: COLORS.success, route: '/(client)/seasons' },
-    { icon: 'people' as const,            label: 'Comunidad',   color: COLORS.purple,  route: '/(client)/community' },
-    { icon: 'event-available' as const,   label: 'Reservas',    color: COLORS.warning, route: '/(client)/reservations' },
-    { icon: 'favorite' as const,          label: 'Favoritos',   color: COLORS.danger,  route: '/(client)/favorites' },
-    { icon: 'play-circle-outline' as const, label: 'Tutoriales', color: '#7C3AED',    route: '/(client)/tutorials' },
-    { icon: 'gavel' as const,             label: 'Normas',      color: '#0F172A',      route: '/(client)/normas-pesca' },
+    { icon: 'event-available' as const,       label: 'Reservas',    color: COLORS.warning, route: '/(client)/reservations' },
+    { icon: 'favorite' as const,              label: 'Favoritos',   color: COLORS.danger,  route: '/(client)/favorites' },
+    { icon: 'gps-fixed' as const,             label: 'Coordenadas', color: COLORS.ocean,   route: '/(client)/fishing-coords' },
+    { icon: 'play-circle-outline' as const,   label: 'Tutoriales',  color: '#7C3AED',      route: '/(client)/tutorials' },
+    { icon: 'gavel' as const,                 label: 'Normas',      color: '#0F172A',      route: '/(client)/normas-pesca' },
+    { icon: 'report-problem' as const,        label: 'Reportar',    color: COLORS.danger,  route: '/(client)/reportar' },
   ];
 
   return (
