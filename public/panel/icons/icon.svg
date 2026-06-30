@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Costa Inteligente">
+  <defs>
+    <linearGradient id="bg" x1="86" y1="64" x2="440" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="108" y1="306" x2="414" y2="396" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#bg)"/>
+  <circle cx="378" cy="132" r="48" fill="#fef3c7"/>
+  <path d="M128 330c44-36 83-36 127 0 44 35 86 35 129 0v56c-43 35-85 35-129 0-44-36-83-36-127 0v-56Z" fill="url(#wave)"/>
+  <path d="M174 287h170l-30 48H203l-29-48Z" fill="#ffffff"/>
+  <path d="M256 141v136h-78l78-136Z" fill="#ffffff" opacity=".95"/>
+  <path d="M274 166v111h76L274 166Z" fill="#d1fae5"/>
+  <text x="256" y="442" text-anchor="middle" font-family="Arial, sans-serif" font-size="62" font-weight="800" fill="#ffffff">CI</text>
+</svg>

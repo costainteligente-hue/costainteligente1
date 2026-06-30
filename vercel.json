@@ -1,13 +1,14 @@
 {
-  "buildCommand": "npx expo export --platform web && node scripts/inject-pwa.js",
+  "buildCommand": "npx expo export --platform web && node scripts/copy-panel.js",
   "outputDirectory": "dist",
   "framework": null,
   "installCommand": "npm install --legacy-peer-deps",
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/_expo/:path*", "destination": "/_expo/:path*" },
-    { "source": "/assets/:path*", "destination": "/assets/:path*" },
-    { "source": "/manifest.json", "destination": "/manifest.json" },
-    { "source": "/:path*", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/_expo/(.*)", "dest": "/_expo/$1" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/panel/(.*)", "dest": "/panel/$1" },
+    { "src": "/manifest\\.json", "dest": "/manifest.json" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

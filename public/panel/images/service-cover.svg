@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" role="img" aria-label="Servicio costero">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="900" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#dff7ff"/>
+      <stop offset=".48" stop-color="#8bd8df"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="346" x2="900" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="620" fill="url(#sky)"/>
+  <circle cx="724" cy="118" r="56" fill="#fde68a"/>
+  <path d="M0 350c94-46 176-46 270 0 94 47 176 47 270 0 94-46 176-46 360 18v252H0V350Z" fill="url(#water)"/>
+  <path d="M196 314h400l-70 92H264l-68-92Z" fill="#ffffff"/>
+  <path d="M430 138v168H246l184-168Z" fill="#f8fafc"/>
+  <path d="M462 170v136h170L462 170Z" fill="#d1fae5"/>
+  <path d="M238 426c68 26 136 26 204 0 68-25 136-25 204 0" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" opacity=".86"/>
+</svg>
