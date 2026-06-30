@@ -80,6 +80,7 @@ export default function ClientLayout() {
       <Tabs.Screen name="normas-pesca" options={{ href: null, title: 'Normas de Pesca' }} />
       <Tabs.Screen name="reportar" options={{ href: null, title: 'Reportar' }} />
       <Tabs.Screen name="sugerir-zona" options={{ href: null, title: 'Sugerir zona' }} />
+      <Tabs.Screen name="fishing-coords" options={{ href: null, title: 'Coordenadas de Pesca' }} />
     </Tabs>
   );
 }

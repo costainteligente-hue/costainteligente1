@@ -223,6 +223,7 @@ export default function ClientProfileScreen() {
           </Text>
           {[
             { icon: 'gavel',            label: 'Normas de pesca',   sublabel: 'Licencias, vedas y reglamentos', onPress: () => router.push('/(client)/normas-pesca' as any),  badge: 'Nuevo' },
+            { icon: 'gps-fixed',        label: 'Coordenadas de Pesca', sublabel: 'Puntos GPS exactos de las mejores zonas', onPress: () => router.push('/(client)/fishing-coords' as any), badge: 'Nuevo' },
             { icon: 'favorite',         label: 'Mis favoritos',     sublabel: 'Zonas guardadas',                onPress: () => router.push('/(client)/favorites') },
             { icon: 'history',          label: 'Mis reservaciones', sublabel: 'Historial y activas',            onPress: () => router.push('/(client)/reservations' as any) },
             { icon: 'report-problem',   label: 'Reportar problema', sublabel: 'Enviar reporte al admin',        onPress: () => router.push('/(client)/reportar' as any) },

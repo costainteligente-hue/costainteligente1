@@ -18,6 +18,7 @@ export default function AdminLayout() {
       <Stack.Screen name="reports" options={{ headerTitle: 'Reportes' }} />
       <Stack.Screen name="alerts" options={{ headerTitle: 'Alertas' }} />
       <Stack.Screen name="audit" options={{ headerTitle: 'Logs de auditoría' }} />
+      <Stack.Screen name="fishing-coords" options={{ headerTitle: 'Coordenadas de Pesca' }} />
     </Stack>
   );
 }

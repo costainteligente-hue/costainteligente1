@@ -13,6 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, SERVICE_DEFS } from '@/lib/constants';
 import { useProviderStore } from '@/stores/providerStore';
+import { LocationPicker, type PickedLocation } from '@/components/ui/LocationPicker';
+import { ImageUploader } from '@/components/ui/ImageUploader';
 import type { BusinessRecord, ServiceModuleId } from '@/types';
 
 // ─── Tipos de embarcación ─────────────────────────────────────────────────────
@@ -183,6 +185,9 @@ export default function ServiceFormScreen() {
 
   const [name, setName]           = useState('');
   const [location, setLocation]   = useState('');
+  const [pickedLoc, setPickedLoc] = useState<PickedLocation | null>(null);
+  const [showLocPicker, setShowLocPicker] = useState(false);
+  const [businessPhotos, setBusinessPhotos] = useState<string[]>([]);
   const [description, setDesc]    = useState('');
   const [captain, setCaptain]     = useState('');
   const [contact, setContact]     = useState('');
@@ -299,6 +304,13 @@ export default function ServiceFormScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        {/* LocationPicker */}
+        <LocationPicker
+          visible={showLocPicker}
+          initial={pickedLoc ?? undefined}
+          onConfirm={(loc) => { setPickedLoc(loc); if (!location.trim()) setLocation(`${loc.latitude.toFixed(5)}, ${loc.longitude.toFixed(5)}`); }}
+          onClose={() => setShowLocPicker(false)}
+        />
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', gap: 12 }}>
           <TouchableOpacity onPress={() => router.back()}>
@@ -341,6 +353,16 @@ export default function ServiceFormScreen() {
             {needsCapacity && <Field label="Capacidad de personas" value={capacity} onChange={(v) => { setCapacity(v); setErrors((e) => ({ ...e, capacity: '' })); }} placeholder="Ej. 6" keyboard="number-pad" error={errors.capacity} required />}
             {def.id === 'guide' && <Field label="Años de experiencia" value={expYears} onChange={setExpYears} placeholder="Ej. 8" keyboard="number-pad" />}
             <Field label="Ubicación / punto de salida" value={location} onChange={(v) => { setLocation(v); setErrors((e) => ({ ...e, location: '' })); }} placeholder="Ej. Muelle principal, Zihuatanejo" error={errors.location} required />
+            {/* Map picker button */}
+            <TouchableOpacity onPress={() => setShowLocPicker(true)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: `${COLORS.ocean}10`, borderRadius: 12, padding: 11, marginBottom: 14, borderWidth: 1, borderColor: `${COLORS.ocean}25` }}>
+              <MaterialIcons name="map" size={18} color={COLORS.ocean} />
+              <Text style={{ color: COLORS.ocean, fontWeight: '800', fontSize: 13 }}>
+                {pickedLoc
+                  ? `📍 ${pickedLoc.latitude.toFixed(4)}° N · ${Math.abs(pickedLoc.longitude).toFixed(4)}° O`
+                  : 'Marcar ubicación exacta en el mapa'}
+              </Text>
+            </TouchableOpacity>
             <Field label="Teléfono de contacto público" value={contact} onChange={setContact} placeholder="Ej. 7551234567" keyboard="phone-pad" />
             <Field label="Descripción" value={description} onChange={setDesc} placeholder="Describe brevemente el servicio..." multiline />
           </View>
@@ -361,6 +383,19 @@ export default function ServiceFormScreen() {
               <ChipSelector label={def.hasCatalog ? 'Productos / servicios' : 'Servicios incluidos'} options={extrasOptions[def.id] ?? []} selected={extras} onToggle={toggleExtra} />
             </View>
           )}
+
+          {/* Fotos del negocio / servicio */}
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', padding: 16, marginBottom: 14 }}>
+            <ImageUploader
+              images={businessPhotos}
+              onChange={setBusinessPhotos}
+              maxImages={6}
+              uploadPath={`providers/${def.id}`}
+              label="Fotos del servicio"
+              hint="Sube fotos reales del servicio, embarcación o negocio. Aparecerán en tu perfil público."
+              allowCamera
+            />
+          </View>
 
           {/* Documentos */}
           <DocUploadSection serviceId={def.id} uploaded={uploaded} onToggle={toggleDoc} />

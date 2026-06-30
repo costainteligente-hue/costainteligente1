@@ -79,8 +79,9 @@ const MENU_SECTIONS = [
   {
     label: 'MAPA Y CONTENIDO',
     items: [
-      { key: 'zones',    label: 'Zonas de pesca', icon: 'place' as const,              route: '/(admin)/zones', badge: 'activeZones' },
-      { key: 'services', label: 'Servicios',       icon: 'category' as const,           route: '/(admin)/verification' },
+      { key: 'zones',    label: 'Zonas de pesca',     icon: 'place' as const,              route: '/(admin)/zones',          badge: 'activeZones' },
+      { key: 'coords',   label: 'Coordenadas GPS',     icon: 'gps-fixed' as const,          route: '/(admin)/fishing-coords' },
+      { key: 'services', label: 'Servicios',           icon: 'category' as const,           route: '/(admin)/verification' },
       { key: 'reports',  label: 'Reportes',        icon: 'report' as const,             route: '/(admin)/reports', badge: 'urgentReports' },
       { key: 'alerts',   label: 'Alertas',          icon: 'notifications-active' as const, route: '/(admin)/alerts' },
       { key: 'audit',    label: 'Auditoría',        icon: 'history' as const,            route: '/(admin)/audit' },
@@ -353,10 +354,11 @@ export default function AdminDashboard() {
       <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
         {[
           { label: 'Cola de verificación', icon: 'verified-user' as const, color: COLORS.warning, route: '/(admin)/verification' },
-          { label: 'Zonas de pesca', icon: 'place' as const, color: COLORS.info, route: '/(admin)/zones' },
-          { label: 'Reportes', icon: 'report' as const, color: COLORS.danger, route: '/(admin)/reports' },
-          { label: 'Alertas', icon: 'notifications-active' as const, color: COLORS.ocean, route: '/(admin)/alerts' },
-          { label: 'Auditoría', icon: 'history' as const, color: COLORS.purple, route: '/(admin)/audit' },
+          { label: 'Zonas de pesca',      icon: 'place' as const,         color: COLORS.info,    route: '/(admin)/zones' },
+          { label: 'Coordenadas GPS',     icon: 'gps-fixed' as const,     color: COLORS.success, route: '/(admin)/fishing-coords' },
+          { label: 'Reportes',            icon: 'report' as const,         color: COLORS.danger,  route: '/(admin)/reports' },
+          { label: 'Alertas',             icon: 'notifications-active' as const, color: COLORS.ocean, route: '/(admin)/alerts' },
+          { label: 'Auditoría',           icon: 'history' as const,        color: COLORS.purple,  route: '/(admin)/audit' },
         ].map((item) => (
           <TouchableOpacity
             key={item.label}
